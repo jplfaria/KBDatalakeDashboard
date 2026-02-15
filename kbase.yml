@@ -1,5 +1,5 @@
 module-name:
-    KBDatalakeDashboard
+    KBDatalakeDashboard2
 
 module-description:
     Dashboard viewer for KBase genome datalake tables. Generates interactive HTML reports from GenomeDataLakeTables objects.
