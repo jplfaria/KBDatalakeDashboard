@@ -547,6 +547,20 @@
         .help-analysis-view .purpose { font-size: 13px; color: var(--kb-base-dark); margin-bottom: 8px; }
         .help-analysis-view .tracks { font-size: 12px; color: var(--kb-base); }
         .help-analysis-view .use-case { font-size: 12px; color: var(--kb-base-dark); background: white; padding: 8px; border-radius: 3px; margin-top: 8px; font-style: italic; }
+        /* Distributions Tab */
+        .distributions-container { flex: 1; overflow: auto; background: var(--kb-white); padding: 24px; }
+        .dist-chart-container { background: white; border: 1px solid var(--kb-base-lighter); border-radius: 8px; padding: 24px; margin-bottom: 20px; }
+        .dist-chart-title { font-size: 16px; font-weight: 600; color: var(--kb-base-dark); margin-bottom: 16px; }
+        .dist-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .dist-stat-card { background: var(--kb-base-lightest); padding: 12px; border-radius: 6px; border-left: 3px solid var(--kb-primary); }
+        .dist-stat-label { font-size: 11px; color: var(--kb-base); text-transform: uppercase; font-weight: 500; }
+        .dist-stat-value { font-size: 20px; font-weight: 600; color: var(--kb-base-dark); margin-top: 4px; }
+        .dist-chart-svg { width: 100%; height: 300px; }
+        .dist-bar { transition: opacity 0.2s; }
+        .dist-bar:hover { opacity: 0.7; }
+        .dist-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; font-size: 12px; }
+        .dist-legend-item { display: flex; align-items: center; gap: 6px; }
+        .dist-legend-color { width: 16px; height: 16px; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -556,6 +570,7 @@
     <div class="tab-bar">
         <img src="kbase_logo.png" alt="KBase" style="height: 28px; margin-right: 12px; align-self: center;">
         <button class="tab-btn active" data-tab="tracks" onclick="switchTab('tracks')">Tracks</button>
+        <button class="tab-btn" data-tab="distributions" onclick="switchTab('distributions')">Distributions</button>
         <button class="tab-btn" data-tab="tree" onclick="switchTab('tree')">Tree</button>
         <button class="tab-btn" data-tab="cluster" onclick="switchTab('cluster')">Cluster</button>
         <button class="tab-btn" data-tab="metabolic" onclick="switchTab('metabolic')">Metabolic Map</button>
@@ -593,16 +608,6 @@
                     <span class="toggle-icon">&#9660;</span>
                 </div>
                 <div class="sort-presets" id="sort-presets"></div>
-            </div>
-            <!-- Protein Distribution -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-title" >
-                    <span>Protein Distribution</span>
-                    <span class="toggle-icon">&#9660;</span>
-                </div>
-                <div style="padding: 8px 12px; font-size: 11px;" id="protein-distribution">
-                    Loading...
-                </div>
             </div>
             <!-- Actions -->
             <div class="sidebar-section">
@@ -651,7 +656,7 @@
                 <div class="minimap-viewport" id="minimap-viewport"></div>
                 <div class="minimap-info">
                     <span id="minimap-label">Genome overview</span>
-                    <span id="position-info">0 - 4617 of 4617</span>
+                    <span id="position-info">Loading...</span>
                 </div>
             </div>
         </div>
@@ -725,13 +730,11 @@
                         <option value="pan_category">Core/Accessory</option>
                         <option value="conservation">Conservation</option>
                         <option value="avg_cons">Avg Consistency</option>
-                        <option value="is_hypo">Hypothetical</option>
                         <option value="localization">Localization</option>
                         <option value="n_ko"># KEGG Terms</option>
                         <option value="n_modules">Module Hits</option>
                         <option value="cluster_size">Cluster Size</option>
                         <option value="specificity">Specificity</option>
-                        <option value="agreement">RAST/Bakta Agreement</option>
                     </select>
                 </div>
             </div>
@@ -766,6 +769,40 @@
                 <div class="tooltip" id="cluster-tooltip"></div>
             </div>
             <div class="cluster-legend" id="cluster-legend"></div>
+        </div>
+    </div>
+
+    <!-- Tab: Distributions -->
+    <div class="tab-content" id="tab-distributions">
+        <div class="sidebar">
+            <div class="sidebar-header">Track Distributions</div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">
+                    <span>Select Track</span>
+                    <span class="toggle-icon">&#9660;</span>
+                </div>
+                <div style="padding: 8px 12px;">
+                    <select id="dist-track-select" style="width: 100%; padding: 8px; border: 1px solid var(--kb-base-lighter); border-radius: 4px; font-size: 12px; background: white;" onchange="renderDistributions()">
+                        <option value="">-- Choose a track --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">
+                    <span>About</span>
+                    <span class="toggle-icon">&#9660;</span>
+                </div>
+                <div style="padding: 8px 12px; font-size: 11px; color: var(--kb-base); line-height: 1.5;">
+                    <p style="margin: 0 0 8px 0;">Visualize the distribution of gene counts across different track values.</p>
+                    <p style="margin: 0;"><strong>Categorical tracks</strong> (e.g., Core/Accessory) show pie and bar charts. <strong>Numerical tracks</strong> (e.g., Conservation) show histograms.</p>
+                </div>
+            </div>
+        </div>
+        <div class="distributions-container" id="distributions-container">
+            <div style="text-align: center; color: var(--kb-base-light); margin-top: 100px;">
+                <p style="font-size: 16px; margin-bottom: 8px;">📊 Select a track to view its distribution</p>
+                <p style="font-size: 12px;">Use the dropdown in the sidebar to choose a track</p>
+            </div>
         </div>
     </div>
 
@@ -1019,9 +1056,7 @@
                             Cellular locations for reactions:
                             <br><span class="help-code">c0</span> = Cytoplasm
                             <br><span class="help-code">e0</span> = Extracellular
-                            <br><span class="help-code">p0</span> = Periplasm
-                            <br><span class="help-code">m0</span> = Mitochondria
-                            <br><span class="help-code">x0</span> = Peroxisome
+                            <br><span class="help-code">p0</span> = Periplasm (bacterial-specific)
                         </div>
                     </div>
                     <div class="help-term">
@@ -1107,8 +1142,9 @@
 
                     <h3>Interpretation</h3>
                     <p>
-                        <strong>High consistency (green)</strong> = Annotation is reliable across orthologs<br>
-                        <strong>Low consistency (red)</strong> = Conflicting annotations, may need manual review<br>
+                        <strong>High consistency (orange)</strong> = Annotation is reliable across orthologs<br>
+                        <strong>Low consistency (blue)</strong> = Conflicting annotations, may need manual review<br>
+                        <strong>Gray</strong> = No cluster assignment (N/A)<br>
                         <strong>Disagreement between sources</strong> = One annotation method may be more reliable than another
                     </p>
                 </div>
@@ -1121,15 +1157,15 @@
                     <div class="help-analysis-view">
                         <h4>1. Characterization Targets</h4>
                         <div class="purpose"><strong>Purpose:</strong> Identify conserved genes with unknown function that are priority targets for experimental characterization.</div>
-                        <div class="tracks"><strong>Tracks:</strong> Hypothetical Protein, Core/Accessory, Pangenome Conservation, Avg Consistency</div>
-                        <div class="use-case"><strong>Example:</strong> "Find core genes (>95% conservation) that are annotated as hypothetical with low consistency scores. These are high-value characterization targets because they're essential but poorly understood."</div>
+                        <div class="tracks"><strong>Tracks:</strong> Core/Accessory, Pangenome Conservation, Avg Consistency, Annotation Specificity</div>
+                        <div class="use-case"><strong>Example:</strong> "Find core genes (>95% conservation) with low specificity and consistency scores. These are high-value characterization targets because they're essential but poorly annotated."</div>
                     </div>
 
                     <div class="help-analysis-view">
                         <h4>2. Annotation Quality</h4>
                         <div class="purpose"><strong>Purpose:</strong> Identify annotation conflicts and quality issues across multiple annotation sources.</div>
-                        <div class="tracks"><strong>Tracks:</strong> RAST/Bakta Agreement, Avg Consistency, Annotation Specificity, Hypothetical Protein</div>
-                        <div class="use-case"><strong>Example:</strong> "Genes where RAST says 'hypothetical' but Bakta assigns a function (Disagree status) with low consistency may have unreliable annotations. Prioritize manual curation."</div>
+                        <div class="tracks"><strong>Tracks:</strong> Avg Consistency, Annotation Specificity</div>
+                        <div class="use-case"><strong>Example:</strong> "Genes with low consistency may have unreliable or inconsistent annotations across reference genomes. Prioritize manual curation."</div>
                     </div>
 
                     <div class="help-analysis-view">
@@ -1168,8 +1204,8 @@
                     <h3>Finding Genes for Experimental Validation</h3>
                     <ol>
                         <li>Switch to <strong>Characterization Targets</strong> analysis view</li>
-                        <li>Look for genes with: Core status + Hypothetical protein + High conservation</li>
-                        <li>Click gene to see details and check if it has ANY functional annotations</li>
+                        <li>Look for genes with: Core status + Low specificity + Low consistency</li>
+                        <li>Click gene to see details and check functional annotations quality</li>
                         <li>Export gene list for lab prioritization</li>
                     </ol>
 
@@ -1186,9 +1222,8 @@
                     <ol>
                         <li>Switch to <strong>Annotation Quality</strong> view</li>
                         <li>Sort by "Lowest Consistency" to see most problematic annotations</li>
-                        <li>Check "RAST/Bakta Agreement" track for conflicts</li>
                         <li>Use <strong>Consistency Comparison</strong> view to see which source is most reliable</li>
-                        <li>Manually review genes with Disagree status and low consistency</li>
+                        <li>Manually review genes with low consistency scores</li>
                     </ol>
 
                     <h3>Understanding Pangenome Evolution</h3>
@@ -1227,15 +1262,15 @@
 
                     <h3>Categorical (Pangenome Status)</h3>
                     <div class="help-color-demo">
-                        <div class="help-color-swatch" style="background: #4F8EB8;"></div>
-                        <span><strong>Blue</strong> = Core (>95% genomes)</span>
+                        <div class="help-color-swatch" style="background: #22c55e;"></div>
+                        <span><strong>Green</strong> = Core (>95% genomes)</span>
                     </div>
                     <div class="help-color-demo">
-                        <div class="help-color-swatch" style="background: #8E44AD;"></div>
-                        <span><strong>Purple</strong> = Accessory (5-95% genomes)</span>
+                        <div class="help-color-swatch" style="background: #f59e0b;"></div>
+                        <span><strong>Orange</strong> = Accessory (5-95% genomes)</span>
                     </div>
                     <div class="help-color-demo">
-                        <div class="help-color-swatch" style="background: #95A5A6;"></div>
+                        <div class="help-color-swatch" style="background: #9ca3af;"></div>
                         <span><strong>Gray</strong> = Singleton (<5% genomes) or Unknown</span>
                     </div>
 
@@ -1268,13 +1303,12 @@
         FUNC:7, N_KO:8, N_COG:9, N_PFAM:10, N_GO:11, LOC:12,
         RAST_CONS:13, KO_CONS:14, GO_CONS:15, EC_CONS:16,
         AVG_CONS:17, BAKTA_CONS:18, EC_AVG_CONS:19, SPECIFICITY:20,
-        IS_HYPO:21, HAS_NAME:22, N_EC:23, AGREEMENT:24,
-        CLUSTER_SIZE:25, N_MODULES:26, EC_MAP_CONS:27, PROT_LEN:28
+        IS_HYPO:21, HAS_NAME:22, N_EC:23,
+        CLUSTER_SIZE:24, N_MODULES:25, EC_MAP_CONS:26, PROT_LEN:27
     };
 
     let LOC_NAMES = ['Cytoplasmic', 'CytoMembrane', 'Periplasmic', 'OuterMembrane', 'Extracellular', 'Unknown'];
     let PAN_NAMES = ['Unknown', 'Accessory', 'Core'];
-    let AGREE_NAMES = ['Both Hypothetical', 'One Hypothetical', 'Disagree', 'Agree'];
 
     // === TRACK DEFINITIONS ===
     const TRACKS = [
@@ -1282,17 +1316,17 @@
           desc: '<strong>Gene Order (Position Index)</strong>' +
             '<span class="tt-label">What it shows:</span>Each gene\'s position in the genome, ordered by its start coordinate on the chromosome.' +
             '<span class="tt-label">How to read it:</span>Light = early in genome, dark = late in genome. In default "Genome Order" sort, this is a smooth gradient. When sorted by other tracks, breaks in the gradient reveal which genomic regions cluster together by function or conservation.' +
-            '<span class="tt-label">Data source:</span>Genomic start coordinate from the genome assembly (E. coli K-12 MG1655, GCF_000005845.2).' },
+            '<span class="tt-label">Data source:</span>Genomic start coordinate from the genome assembly.' },
         { id: 'strand', name: 'Gene Direction', field: F.STRAND, type: 'binary', enabled: true,
           desc: '<strong>Gene Direction (DNA Strand)</strong>' +
             '<span class="tt-label">What it shows:</span>Which DNA strand the gene is encoded on: forward (+, purple) or reverse (-, orange).' +
             '<span class="tt-label">How to read it:</span>Consecutive blocks of the same color indicate genes transcribed in the same direction. These often form <em>operons</em> (co-transcribed gene clusters with related functions). Alternating colors suggest independent transcription units.' +
-            '<span class="tt-label">Biological insight:</span>In E. coli, ~53% of genes are on the forward strand. Long same-color blocks near the origin of replication reflect co-directional transcription bias.' },
+            '<span class="tt-label">Biological insight:</span>Many bacteria show ~50-55% of genes on the forward strand, with long same-color blocks near the origin of replication reflecting co-directional transcription bias.' },
         { id: 'conservation', name: 'Pangenome Conservation', field: F.CONS_FRAC, type: 'sequential', enabled: true,
           desc: '<strong>Pangenome Conservation Fraction</strong>' +
-            '<span class="tt-label">What it shows:</span>What fraction of the 35 reference E. coli genomes in the pangenome have a gene in the same orthologous cluster as this gene.' +
-            '<span class="tt-label">How it\'s computed:</span>The user genome is classified against a pre-built pangenome (built with mmseqs2 clustering). For each gene, we count how many of the 35 reference genomes have at least one gene in the same cluster, then divide by 35. For genes matching multiple clusters, we take the highest value.' +
-            '<span class="tt-label">How to read it:</span>1.0 (dark) = present in all 35 reference genomes (highly conserved). 0.0 (light) = no pangenome cluster match. Most core genes are >0.7.' +
+            '<span class="tt-label">What it shows:</span>What fraction of the reference genomes in the pangenome have a gene in the same orthologous cluster as this gene.' +
+            '<span class="tt-label">How it\'s computed:</span>The user genome is classified against a pre-built pangenome (built with mmseqs2 clustering). For each gene, we count how many of the ${METADATA.n_ref_genomes} reference genomes have at least one gene in the same cluster, then divide by ${METADATA.n_ref_genomes}. For genes matching multiple clusters, we take the highest value.' +
+            '<span class="tt-label">How to read it:</span>1.0 (dark) = present in all ${METADATA.n_ref_genomes} reference genomes (highly conserved). 0.0 (light) = no pangenome cluster match. Most core genes are >0.7.' +
             '<span class="tt-label">Why it matters:</span>Highly conserved genes are typically essential or important. Low-conservation genes may be horizontally transferred, strain-specific, or phage-related.' },
         { id: 'pan_category', name: 'Core/Accessory', field: F.PAN_CAT, type: 'categorical', enabled: true, categories: PAN_NAMES,
           desc: '<strong>Core / Accessory / Unknown Classification</strong>' +
@@ -1300,8 +1334,7 @@
             '<div class="tt-colors"><span class="tt-swatch" style="background:#22c55e"></span> <strong>Core</strong> = conserved across nearly all reference genomes (high cluster member count)</div>' +
             '<div class="tt-colors"><span class="tt-swatch" style="background:#f59e0b"></span> <strong>Accessory</strong> = present in some but not all reference genomes</div>' +
             '<div class="tt-colors"><span class="tt-swatch" style="background:#9ca3af"></span> <strong>Unknown</strong> = no pangenome cluster hit (gray)</div>' +
-            '<span class="tt-label">How it\'s determined:</span>Based on the <em>is_core</em> flag from the pangenome pipeline. The threshold considers total cluster membership across 35 reference genomes.' +
-            '<span class="tt-label">In this genome:</span>3,626 core, 587 accessory, 404 unknown genes.' },
+            '<span class="tt-label">How it\'s determined:</span>Based on the <em>is_core</em> flag from the pangenome pipeline. The threshold considers total cluster membership across ${METADATA.n_ref_genomes} reference genomes.' },
         { id: 'avg_cons', name: 'Function Consensus (avg)', field: F.AVG_CONS, type: 'consistency', enabled: true,
           desc: '<strong>Average Function Consistency Score</strong>' +
             '<span class="tt-label">What it shows:</span>How well this gene\'s functional annotation agrees with other genes in the same pangenome cluster, averaged across all annotation sources (RAST, KO, GO, EC, Bakta).' +
@@ -1341,7 +1374,7 @@
         { id: 'specificity', name: 'Annotation Specificity', field: F.SPECIFICITY, type: 'consistency', enabled: false,
           desc: '<strong>Annotation Specificity</strong>' +
             '<span class="tt-label">What it shows:</span>How precise and detailed the functional annotation is for this gene. Based on annotation text quality and ontology evidence (EC numbers, KO terms, gene names, COG/GO assignments).' +
-            '<span class="tt-label">How to read it:</span>1.0 (green) = highly specific annotation with EC number and named enzyme. 0.6-0.8 = good annotation with KO or gene name. 0.3-0.5 = vague annotation (putative, uncharacterized). 0.0 (red) = hypothetical protein. Gray = no cluster.' +
+            '<span class="tt-label">How to read it:</span>1.0 (orange) = highly specific annotation with EC number and named enzyme. 0.6-0.8 = good annotation with KO or gene name. 0.3-0.5 = vague annotation (putative, uncharacterized). 0.0 (blue) = hypothetical protein. Gray = no cluster.' +
             '<span class="tt-label">Why it matters:</span>Low specificity highlights genes needing better characterization. Unlike consistency (which measures cluster agreement), specificity measures how informative the annotation itself is.' },
         { id: 'n_ko', name: '# KEGG Terms', field: F.N_KO, type: 'sequential', enabled: false,
           desc: '<strong># KEGG Orthology Terms</strong>' +
@@ -1370,12 +1403,6 @@
             '<span class="tt-label">About PSORTb:</span>PSORTb uses multiple methods (signal peptides, transmembrane helices, motifs) to predict where a protein localizes in a Gram-negative cell. "Unknown" means PSORTb could not confidently predict a location.' +
             '<span class="tt-label">Biological insight:</span>Localization correlates with function: transporters are in membranes, metabolic enzymes in cytoplasm, secreted toxins are extracellular.' },
         // === NEW TRACKS ===
-        { id: 'is_hypo', name: 'Hypothetical Protein', field: F.IS_HYPO, type: 'binary', enabled: false,
-          desc: '<strong>Hypothetical Protein Flag</strong>' +
-            '<span class="tt-label">What it shows:</span>Whether both annotation tools (RAST and Bakta) classify this gene as a hypothetical protein, meaning its function is unknown.' +
-            '<div class="tt-colors"><span class="tt-swatch" style="background:#6366f1"></span> <strong>Has function</strong> = at least one tool assigned a function &nbsp; <span class="tt-swatch" style="background:#f97316"></span> <strong>Hypothetical</strong> = both tools say hypothetical/unknown</div>' +
-            '<span class="tt-label">Why it matters:</span>102 genes in this genome are functionally dark (both RAST and Bakta say hypothetical). When these overlap with core pangenome genes, they represent high-priority characterization targets since they\'re conserved but uncharacterized.' +
-            '<span class="tt-label">Tip:</span>Combine with the Core/Accessory track. Hypothetical + Core = conserved gene with no known function, likely important.' },
         { id: 'has_name', name: 'Has Gene Name', field: F.HAS_NAME, type: 'binary', enabled: false,
           desc: '<strong>Has Official Gene Name</strong>' +
             '<span class="tt-label">What it shows:</span>Whether this gene has an official gene name (e.g., dnaA, tssB, lacZ) as opposed to being identified only by a locus tag.' +
@@ -1388,18 +1415,13 @@
             '<span class="tt-label">How to read it:</span>Light = 0 EC numbers (not an enzyme, or enzyme activity unknown). Dark = multiple EC numbers (multifunctional enzyme or enzyme with broad specificity). Most genes have 0 or 1.' +
             '<span class="tt-label">Coverage:</span>1,876 genes (41%) have at least one EC number. Non-enzymatic proteins (transporters, regulators, structural) naturally have 0.' +
             '<span class="tt-label">Source:</span>EC assignments from Bakta annotation pipeline.' },
-        { id: 'agreement', name: 'RAST/Bakta Agreement', field: F.AGREEMENT, type: 'categorical', enabled: false, categories: AGREE_NAMES,
-          desc: '<strong>RAST vs Bakta Annotation Agreement</strong>' +
-            '<span class="tt-label">What it shows:</span>Whether the two annotation tools (RAST and Bakta) agree on this gene\'s function.' +
-            '<div class="tt-colors"><span class="tt-swatch" style="background:#9ca3af"></span> Both Hypothetical &nbsp; <span class="tt-swatch" style="background:#f59e0b"></span> One Hypothetical &nbsp; <span class="tt-swatch" style="background:#22c55e"></span> Disagree &nbsp; <span class="tt-swatch" style="background:#3b82f6"></span> Agree</div>' +
-            '<span class="tt-label">How to interpret:</span>Only 328 genes have exact agreement between RAST and Bakta function strings. This is expected since RAST and Bakta use different naming conventions. "Disagree" does NOT mean the annotations are wrong; it often means the same function is described differently.' +
-            '<span class="tt-label">What matters:</span>"One Hypothetical" (285 genes) is the most interesting category: one tool found a function that the other missed. These may be recently characterized genes.' },
         { id: 'cluster_size', name: 'Cluster Size', field: F.CLUSTER_SIZE, type: 'sequential', enabled: false,
           desc: '<strong>Pangenome Cluster Size</strong>' +
-            '<span class="tt-label">What it shows:</span>Total number of gene members in this gene\'s pangenome cluster across all 35 reference genomes. For multi-cluster genes, the largest cluster is shown.' +
+            '<span class="tt-label">What it shows:</span>Total number of gene members in this gene\'s pangenome cluster across all ${METADATA.n_ref_genomes} reference genomes. For multi-cluster genes, the largest cluster is shown.' +
             '<span class="tt-label">How to read it:</span>Light = small cluster (1-5 members, rare gene family). Dark = large cluster (100+ members, expanded gene family). Ranges from 1 to 774 in this dataset.' +
-            '<span class="tt-label">Different from conservation:</span>Conservation measures how many genomes have the gene. Cluster size measures total copies including paralogs. A cluster with 100 members in 35 genomes means ~3 copies per genome on average.' +
-            '<span class="tt-label">Biological insight:</span>Large clusters often represent gene families with many paralogs (e.g., ABC transporters, two-component systems). Single-member clusters are truly unique genes.' },
+            '<span class="tt-label">⚠️ Cluster Size vs Conservation:</span>These are DIFFERENT metrics! Conservation = fraction of genomes containing this gene (0-1 scale). Cluster Size = total number of gene copies across all genomes (can be > number of genomes if there are paralogs). Example: A gene in all ${METADATA.n_ref_genomes} genomes with 2 copies each has 100% conservation but cluster size = ${METADATA.n_ref_genomes * 2}.' +
+            '<span class="tt-label">Why huge clusters exist:</span>Some gene families (ABC transporters, transcriptional regulators) have many paralogs per genome. A cluster with 774 members across ${METADATA.n_ref_genomes} genomes averages ~${Math.floor(774 / METADATA.n_ref_genomes)} copies per genome. These large clusters can throw off the color scale.' +
+            '<span class="tt-label">Biological insight:</span>Large clusters = expanded gene families with many paralogs. Small clusters = single-copy or rare genes. Compare with conservation to distinguish: high conservation + small cluster = single-copy essential gene; high conservation + large cluster = expanded gene family.' },
         { id: 'n_modules', name: 'KEGG Module Hits', field: F.N_MODULES, type: 'sequential', enabled: false,
           desc: '<strong>KEGG Module Participation</strong>' +
             '<span class="tt-label">What it shows:</span>How many KEGG metabolic modules this gene participates in. KEGG modules are functional units representing metabolic pathways, structural complexes, or signaling pathways.' +
@@ -1410,7 +1432,7 @@
           desc: '<strong>EC Mapped Consistency</strong>' +
             '<span class="tt-label">What it shows:</span>Consistency of this gene\'s EC number assignment compared to other genes in the same pangenome cluster, using EC numbers derived from GO and KEGG mappings (not direct EC annotation).' +
             '<span class="tt-label">How it differs from EC Consistency:</span>Regular EC Consistency uses directly annotated EC numbers. EC Mapped Consistency uses EC numbers inferred through GO term cross-references (oio:hasDbXref) and KEGG KO-to-EC mappings. These two often disagree (1,742 genes differ).' +
-            '<span class="tt-label">How to interpret:</span>When EC Consistency is low but EC Mapped is high (or vice versa), it means the mapping pathway matters. Green = mapped ECs agree across cluster. Red = disagree. Gray = no EC mapping or no cluster.' },
+            '<span class="tt-label">How to interpret:</span>When EC Consistency is low but EC Mapped is high (or vice versa), it means the mapping pathway matters. Orange = mapped ECs agree across cluster. Blue = disagree. Gray = no EC mapping or no cluster.' },
         { id: 'prot_len', name: 'Protein Length', field: F.PROT_LEN, type: 'sequential', enabled: false,
           desc: '<strong>Protein Length (amino acids)</strong>' +
             '<span class="tt-label">What it shows:</span>Length of the predicted protein product in amino acids. Ranges from 29 to 2,358 aa in this genome (mean 311 aa).' +
@@ -1464,11 +1486,13 @@
           desc: '<strong># Linked Phenotypes</strong>' +
             '<span class="tt-label">What it shows:</span>Number of distinct phenotypes (growth conditions) linked to this gene through the metabolic model. Each phenotype represents a growth/no-growth prediction on a specific media composition.' +
             '<span class="tt-label">How to read it:</span>Light (0-2) = gene involved in few phenotypes. Dark (20+) = gene involved in many metabolic pathways/conditions.' +
+            '<span class="tt-label">🔬 Data source:</span>Propagated from Adam Deutschbauer\'s RB-TnSeq database for ADP1. This is organism-specific data, not computed genome-wide.' +
             '<span class="tt-label">Biological insight:</span>High phenotype counts indicate genes that are functionally important across many conditions - often central metabolism genes. Low counts suggest specialized/condition-specific roles.' },
         { id: 'n_fitness', name: '# Fitness Scores', field: 'N_FITNESS', type: 'sequential', enabled: false,
           desc: '<strong># Fitness Scores</strong>' +
             '<span class="tt-label">What it shows:</span>Number of experimental fitness scores from high-throughput mutant fitness assays where model predictions match experimental data (fitness_match=yes). Based on RB-TnSeq and similar Tn-seq datasets.' +
             '<span class="tt-label">How to read it:</span>Light (0) = no experimental validation. Dark (high count) = gene validated across many conditions.' +
+            '<span class="tt-label">🔬 Data source:</span>Propagated from Adam Deutschbauer\'s RB-TnSeq/SEEK database for ADP1. This is experimental data mapped to this genome.' +
             '<span class="tt-label">Biological insight:</span>High fitness counts indicate experimentally verified importance. Genes with high phenotype predictions but zero fitness scores may need experimental validation.' },
 
         // NEW TRACKS: Essentiality, Missing Core, Improbability
@@ -1486,6 +1510,7 @@
           desc: '<strong>Essential Gene</strong>' +
             '<span class="tt-label">What it shows:</span>Whether this gene is essential for growth based on metabolic modeling (FBA). Essential genes carry reactions with essential_forward or essential_reverse flux class.' +
             '<span class="tt-label">How to read it:</span>Gray = not metabolic. Blue = metabolic but non-essential. Red = essential for growth.' +
+            '<span class="tt-label">🔬 Data source:</span>Essentiality predictions from FBA metabolic modeling. Cross-validated with Adam\'s RB-TnSeq experimental data where available.' +
             '<span class="tt-label">Biological insight:</span>Essential genes are required for survival under modeled conditions. Deletion would be lethal. High-priority drug targets.' },
 
         { id: 'missing_core', name: 'Missing Core Status', field: -1, type: 'categorical', enabled: false,
@@ -1527,10 +1552,10 @@
           desc: '<strong>Genome Order (Default)</strong><span class="tt-label">What it does:</span>Sorts genes by their physical position on the chromosome (start coordinate). This is the natural gene order as found in the genome assembly.<span class="tt-label">When to use:</span>Default view. Use this to see the genome layout and identify operons (consecutive same-strand genes), genomic islands, and regional patterns.',
           fn: (a, b, g) => g[a][F.START] - g[b][F.START] },
         { id: 'conservation', name: 'Conservation',
-          desc: '<strong>Sort by Conservation (High \u2192 Low)</strong><span class="tt-label">What it does:</span>Sorts genes by pangenome conservation fraction (highest first). Genes present in all 35 reference genomes appear first; strain-specific genes appear last.<span class="tt-label">When to use:</span>Quickly identify the most conserved (essential) vs. strain-specific genes. The transition zone between core and accessory genes is especially interesting.',
+          desc: '<strong>Sort by Conservation (High \u2192 Low)</strong><span class="tt-label">What it does:</span>Sorts genes by pangenome conservation fraction (highest first). Genes present in all reference genomes appear first; strain-specific genes appear last.<span class="tt-label">When to use:</span>Quickly identify the most conserved (essential) vs. strain-specific genes. The transition zone between core and accessory genes is especially interesting.',
           fn: (a, b, g) => g[b][F.CONS_FRAC] - g[a][F.CONS_FRAC] },
         { id: 'consistency', name: 'Consistency',
-          desc: '<strong>Sort by Avg Consistency (High \u2192 Low)</strong><span class="tt-label">What it does:</span>Sorts by average function consistency score (highest first). Genes where all annotation sources agree with cluster members appear first. N/A genes (no pangenome cluster) are pushed to the end.<span class="tt-label">When to use:</span>Identify well-annotated genes (green at top) vs. potentially mis-annotated or novel-function genes (red near bottom).',
+          desc: '<strong>Sort by Avg Consistency (High \u2192 Low)</strong><span class="tt-label">What it does:</span>Sorts by average function consistency score (highest first). Genes where all annotation sources agree with cluster members appear first. N/A genes (no pangenome cluster) are pushed to the end.<span class="tt-label">When to use:</span>Identify well-annotated genes (orange at top) vs. potentially mis-annotated or novel-function genes (blue near bottom).',
           fn: (a, b, g) => {
             const va = g[a][F.AVG_CONS], vb = g[b][F.AVG_CONS];
             if (va < 0 && vb < 0) return 0;
@@ -1561,7 +1586,7 @@
             return va - vb;
         }},
         { id: 'strand_blocks', name: 'Strand Blocks',
-          desc: '<strong>Sort by Strand Blocks</strong><span class="tt-label">What it does:</span>Groups genes by strand direction (forward +, then reverse -), with genomic order preserved within each group.<span class="tt-label">When to use:</span>Visualize the strand distribution. In E. coli, there is a bias toward leading-strand genes near the origin of replication. This sort separates the two strands for easier comparison of their properties.',
+          desc: '<strong>Sort by Strand Blocks</strong><span class="tt-label">What it does:</span>Groups genes by strand direction (forward +, then reverse -), with genomic order preserved within each group.<span class="tt-label">When to use:</span>Visualize the strand distribution. Many bacteria show bias toward leading-strand genes near the origin of replication. This sort separates the two strands for easier comparison of their properties.',
           fn: (a, b, g) => {
             const diff = g[b][F.STRAND] - g[a][F.STRAND];
             return diff !== 0 ? diff : g[a][F.START] - g[b][F.START];
@@ -1627,6 +1652,9 @@
     let clusterZoom = 1, clusterPanX = 0, clusterPanY = 0;
     let clusterDragging = false, clusterDragStartX = 0, clusterDragStartY = 0, clusterDragPanX = 0, clusterDragPanY = 0;
 
+    // Distributions state
+    let distributionsLoaded = false;
+
     // Metabolic map state
     let metabolicLoaded = false;
     let reactionsData = null;
@@ -1677,12 +1705,12 @@
             desc: 'Number of contiguous DNA sequences (contigs) in the genome assembly. Lower is better - fewer contigs indicates a more complete, higher-quality assembly. A value of 1 means a complete chromosome. High values (>100) suggest fragmented or draft-quality assemblies.'
         },
         {
-            id: 'hypo_pct',
-            name: 'Hypothetical %',
-            short: 'Hypo %',
+            id: 'missing_core',
+            name: 'Missing Core Genes',
+            short: 'Missing Core',
             color: '#ef4444',
-            enabled: false,
-            desc: 'Percentage of genes annotated as "hypothetical protein" or with no assigned function. Lower is better - indicates more complete functional annotation. User genome only (reference genomes lack detailed annotation data in this view).'
+            enabled: true,
+            desc: 'Number of core pangenome clusters that are absent from this genome. Core clusters are those present in >95% of reference genomes. A genome missing many core genes may indicate: (1) assembly gaps/incompleteness, (2) genuine gene loss in this lineage, or (3) highly divergent orthologs not detected by clustering. Zero missing = genome contains all expected core genes.'
         },
         {
             id: 'ko_pct',
@@ -1724,6 +1752,7 @@
             if (!summaryLoaded) loadSummaryData();
         }
         if (tabId === 'cluster' && !clusterLoaded) loadClusterData();
+        if (tabId === 'distributions' && !distributionsLoaded) initDistributions();
         if (tabId === 'metabolic') {
             if (!metabolicLoaded) loadMetabolicData();
             if (!summaryLoaded) loadSummaryData();
@@ -1758,7 +1787,6 @@
             if (CONFIG.categories) {
                 if (CONFIG.categories.localization) LOC_NAMES = CONFIG.categories.localization;
                 if (CONFIG.categories.pangenome) PAN_NAMES = CONFIG.categories.pangenome;
-                if (CONFIG.categories.agreement) AGREE_NAMES = CONFIG.categories.agreement;
             }
 
             // Apply track enabled states from config
@@ -1881,24 +1909,23 @@
     // === ANALYSIS VIEWS ===
     const ANALYSIS_VIEWS = [
         { id: 'characterization', name: 'Characterization Targets',
-          tracks: ['is_hypo', 'pan_category', 'conservation', 'avg_cons'],
+          tracks: ['pan_category', 'conservation', 'avg_cons', 'specificity'],
           sort: 'pan_status',
           summary: 'Find conserved genes with unknown function',
           desc: '<strong>Characterization Targets</strong>' +
             '<span class="tt-label">Purpose:</span>Identify genes that are conserved across genomes but lack functional annotation. These are high-priority targets for experimental characterization.' +
-            '<span class="tt-label">What to look for:</span>Genes that show orange (hypothetical) in the first track but green (core) in the second. These are conserved in nearly all reference genomes yet both RAST and Bakta fail to assign a function.' +
-            '<span class="tt-label">Tracks shown:</span>Hypothetical Protein + Core/Accessory + Conservation + Avg Consistency' +
-            '<span class="tt-label">Example use case:</span>Find core genes (>95% conservation) annotated as hypothetical with low consistency scores. These are high-value targets because they\'re essential but poorly understood.' },
+            '<span class="tt-label">What to look for:</span>Genes that are core (green) with low specificity (blue) and low consistency (blue). These are conserved across genomes but poorly annotated.' +
+            '<span class="tt-label">Tracks shown:</span>Core/Accessory + Conservation + Avg Consistency + Specificity' +
+            '<span class="tt-label">Example use case:</span>Find core genes (>95% conservation) with low specificity and consistency scores. These are high-value targets because they\'re essential but poorly characterized.' },
         { id: 'annotation_quality', name: 'Annotation Quality',
-          tracks: ['agreement', 'avg_cons', 'specificity', 'is_hypo'],
+          tracks: ['avg_cons', 'specificity'],
           sort: 'low_consistency',
           summary: 'Spot annotation conflicts and gaps',
           desc: '<strong>Annotation Quality Assessment</strong>' +
-            '<span class="tt-label">Purpose:</span>Evaluate the reliability of functional annotations. Spots genes where annotation tools disagree, consistency is low, or specificity is poor.' +
-            '<span class="tt-label">What to look for:</span>Genes sorted by lowest consistency first. Blue cells = potential annotation problems. Look for patterns: do certain function types consistently show disagreement?' +
-            '<span class="tt-label">Tracks shown:</span>RAST/Bakta Agreement + Avg Consistency + Specificity + Hypothetical Flag' +
-            '<span class="tt-label">Agreement colors:</span>Green = both agree on function, Purple = both say hypothetical, Orange = one hypothetical/one function, Red = disagree on function' +
-            '<span class="tt-label">Example use case:</span>Genes with "Disagree" status and low consistency may have unreliable annotations. Prioritize these for manual curation or re-annotation.' },
+            '<span class="tt-label">Purpose:</span>Evaluate the reliability of functional annotations. Spots genes where consistency is low or specificity is poor.' +
+            '<span class="tt-label">What to look for:</span>Genes sorted by lowest consistency first. Blue cells = potential annotation problems. Look for patterns: do certain function types consistently show low consistency?' +
+            '<span class="tt-label">Tracks shown:</span>Avg Consistency + Specificity' +
+            '<span class="tt-label">Example use case:</span>Genes with low consistency may have unreliable annotations. Prioritize these for manual curation or re-annotation.' },
         { id: 'metabolic', name: 'Metabolic Landscape',
           tracks: ['n_ec', 'n_modules', 'ec_cons', 'ec_map_cons'],
           sort: null,
@@ -2230,8 +2257,6 @@
             <div class="detail-section">
                 <div class="detail-section-title">Annotation</div>
                 <div class="detail-row"><span class="detail-label">Gene Name</span><span class="detail-value">${gene[F.HAS_NAME] ? 'Yes' : 'No'}</span></div>
-                <div class="detail-row"><span class="detail-label">Hypothetical</span><span class="detail-value">${gene[F.IS_HYPO] ? 'Yes (both tools)' : 'No'}</span></div>
-                <div class="detail-row"><span class="detail-label">RAST/Bakta</span><span class="detail-value">${AGREE_NAMES[gene[F.AGREEMENT]]}</span></div>
                 <div class="detail-row"><span class="detail-label">Protein Length</span><span class="detail-value">${gene[F.PROT_LEN]} aa</span></div>
             </div>
             <div class="detail-section">
@@ -2612,7 +2637,7 @@
                     <div class="tt-row"><span class="tt-label">KO / GO / EC</span><span class="tt-val">${fmtCons(gene[F.KO_CONS])} / ${fmtCons(gene[F.GO_CONS])} / ${fmtCons(gene[F.EC_CONS])}</span></div>
                     <div class="tt-row"><span class="tt-label">Terms</span><span class="tt-val">KO:${gene[F.N_KO]} COG:${gene[F.N_COG]} Pfam:${gene[F.N_PFAM]} GO:${gene[F.N_GO]} EC:${gene[F.N_EC]}</span></div>
                     <div class="tt-row"><span class="tt-label">Location</span><span class="tt-val">${LOC_NAMES[gene[F.LOC]] || '?'}</span></div>
-                    <div class="tt-row"><span class="tt-label">Status</span><span class="tt-val">${gene[F.IS_HYPO] ? 'Hypothetical' : (gene[F.HAS_NAME] ? 'Named' : 'Unnamed')} | ${AGREE_NAMES[gene[F.AGREEMENT]]} | ${gene[F.PROT_LEN]}aa</span></div>
+                    <div class="tt-row"><span class="tt-label">Status</span><span class="tt-val">${gene[F.HAS_NAME] ? 'Named' : 'Unnamed'} | ${gene[F.PROT_LEN]}aa</span></div>
                 </div>
                 <div class="func">${gene[F.FUNC] || 'No function annotation'}</div>
             `;
@@ -2802,12 +2827,6 @@
                         '<div class="legend-color" style="background: #f97316;"></div><span>Reverse (-)</span>',
                     tip: 'Purple = gene on forward strand. Orange = gene on reverse strand. Blocks of the same color often indicate operons (co-transcribed gene groups).'
                 },
-                'is_hypo': {
-                    html: '<span class="legend-label">Hypothetical:</span>' +
-                        '<div class="legend-color" style="background: #6366f1;"></div><span>Hypothetical</span>' +
-                        '<div class="legend-color" style="background: #f97316;"></div><span>Has function</span>',
-                    tip: 'Purple = both annotation tools (RAST and Bakta) classify this gene as hypothetical (function unknown). Orange = at least one tool assigned a function.'
-                },
                 'has_name': {
                     html: '<span class="legend-label">Gene Name:</span>' +
                         '<div class="legend-color" style="background: #6366f1;"></div><span>Named</span>' +
@@ -2826,14 +2845,6 @@
                         '<div class="legend-color" style="background: #f59e0b;"></div><span>Accessory</span>' +
                         '<div class="legend-color" style="background: #22c55e;"></div><span>Core</span>',
                     tip: 'Gray = no pangenome cluster match. Orange = present in some reference genomes (accessory). Green = conserved across nearly all reference genomes (core).'
-                },
-                'agreement': {
-                    html: '<span class="legend-label">RAST/Bakta:</span>' +
-                        '<div class="legend-color" style="background: #9ca3af;"></div><span>Both hypo</span>' +
-                        '<div class="legend-color" style="background: #f59e0b;"></div><span>One hypo</span>' +
-                        '<div class="legend-color" style="background: #22c55e;"></div><span>Disagree</span>' +
-                        '<div class="legend-color" style="background: #3b82f6;"></div><span>Agree</span>',
-                    tip: 'Gray = both tools say hypothetical. Orange = one tool found a function the other missed. Green = both assigned functions but with different names (common, not necessarily wrong). Blue = exact same function string.'
                 },
                 'localization': {
                     html: '<span class="legend-label">Localization:</span>' +
@@ -2906,7 +2917,49 @@
             const treeFile = (CONFIG && CONFIG.data_files && CONFIG.data_files.tree) || 'tree_data.json';
             const resp = await fetch(treeFile);
             treeData = await resp.json();
+
+            // Load reference genome stats
+            if (CONFIG && CONFIG.data_files && CONFIG.data_files.ref_genomes) {
+                try {
+                    const refGenomesResp = await fetch(CONFIG.data_files.ref_genomes);
+                    const refGenomesData = await refGenomesResp.json();
+
+                    // Merge ref genome stats into tree_data
+                    Object.entries(refGenomesData.genomes).forEach(([genomeId, stats]) => {
+                        if (!treeData.genome_metadata[genomeId]) {
+                            treeData.genome_metadata[genomeId] = {};
+                        }
+                        if (!treeData.genome_metadata[genomeId].stats) {
+                            treeData.genome_metadata[genomeId].stats = {};
+                        }
+                        // Merge stats
+                        Object.assign(treeData.genome_metadata[genomeId].stats, stats);
+                    });
+
+                    console.log(`Loaded stats for ${Object.keys(refGenomesData.genomes).length} reference genomes`);
+                } catch (e) {
+                    console.warn('ref_genomes_data.json not available:', e);
+                }
+            }
+
             treeLoaded = true;
+
+            // Load cluster data if needed for missing_core computation
+            if (!clusterData) {
+                try {
+                    const clusterFile = (CONFIG && CONFIG.data_files && CONFIG.data_files.cluster) || 'cluster_data.json';
+                    const clusterResp = await fetch(clusterFile);
+                    clusterData = await clusterResp.json();
+                } catch (e) {
+                    console.warn('cluster_data.json not available for missing_core computation');
+                }
+            }
+
+            // NOTE: missing_core stat is now loaded from ref_genomes_data.json (computed by extract_pan_genome_features.py)
+            // The previous computeMissingCoreStats() function was incorrect - it counted discrepancies in genes that EXIST,
+            // but missing_core should count core clusters the genome LACKS (requires pangenome cluster data).
+            // The Python script correctly computes: total_core_clusters - core_genes_in_this_genome
+
             renderTreeSidebar();
             renderTree();
         } catch (e) {
@@ -2914,6 +2967,18 @@
             document.getElementById('tree-info').textContent = 'Error loading tree_data.json';
         }
     }
+
+    // DEPRECATED: computeMissingCoreStats() - this function was removed because it computed an incorrect value
+    // Missing core genes cannot be computed from the genes that EXIST in the user genome.
+    // The correct computation requires: total_core_clusters_in_pangenome - core_genes_in_this_genome
+    // This is now computed in extract_pan_genome_features.py and loaded from ref_genomes_data.json
+    /*
+    function computeMissingCoreStats() {
+        // INCORRECT LOGIC: This counted genes with CONS_FRAC > 0.95 but PAN_CAT != 2
+        // That's a discrepancy/inconsistency, NOT missing genes
+        // Missing genes are clusters the genome LACKS entirely
+    }
+    */
 
     function renderTreeSidebar() {
         const toggles = document.getElementById('tree-stat-toggles');
@@ -3109,7 +3174,7 @@
                 const barStart = labelWidth + treeWidth + statGap;
                 const barW = statBarWidth / enabledStats.length;
                 enabledStats.forEach((s, si) => {
-                    let val = 0;
+                    let val = null;
                     // Check meta.stats first (new structure), then meta directly, then genome_stats (legacy)
                     if (meta.stats && meta.stats[s.id] != null) {
                         val = meta.stats[s.id];
@@ -3119,13 +3184,19 @@
                         val = stats[s.id];
                     }
 
-                    const w = (val / statMaxes[s.id]) * (barW - 6);
                     const bx = barStart + si * barW;
                     // Background track
                     svg += `<rect x="${bx}" y="${y - 6}" width="${barW - 6}" height="12" fill="#F2EFEB" rx="1"/>`;
-                    // Value bar (only draw if value > 0)
-                    if (w > 0) {
-                        svg += `<rect x="${bx}" y="${y - 6}" width="${w}" height="12" fill="${s.color}" opacity="0.7" rx="1"/>`;
+
+                    if (val === null) {
+                        // Show "-" for missing data
+                        svg += `<text x="${bx + (barW - 6)/2}" y="${y + 4}" text-anchor="middle" font-size="10" fill="#9D9389">-</text>`;
+                    } else {
+                        // Value bar (only draw if value > 0)
+                        const w = (val / statMaxes[s.id]) * (barW - 6);
+                        if (w > 0) {
+                            svg += `<rect x="${bx}" y="${y - 6}" width="${w}" height="12" fill="${s.color}" opacity="0.7" rx="1"/>`;
+                        }
                     }
                 });
             }
@@ -3232,7 +3303,7 @@
                     <strong style="color:#6A6158;">Gene Features:</strong> UMAP of 23 gene properties (conservation, consistency scores, annotation counts, protein length). Groups genes with similar functional profiles.
                 </div>
                 <div style="margin-top:4px; font-size:10px; color:#9D9389; line-height:1.5;">
-                    <strong style="color:#6A6158;">Presence/Absence:</strong> UMAP of binary cluster membership across ${(CONFIG && CONFIG.n_ref_genomes) || 35} reference genomes. Groups genes with similar phylogenetic distribution.
+                    <strong style="color:#6A6158;">Presence/Absence:</strong> UMAP of binary cluster membership across ${METADATA.n_ref_genomes} reference genomes. Groups genes with similar phylogenetic distribution.
                 </div>
             `;
         } catch (e) {
@@ -3254,7 +3325,7 @@
         if (clusterEmbedding === 'features') {
             descEl.textContent = 'UMAP of conservation, consistency scores, annotation counts, protein length';
         } else {
-            const nRef = (CONFIG && CONFIG.n_ref_genomes) || 35;
+            const nRef = METADATA.n_ref_genomes;
             descEl.textContent = `UMAP of pangenome cluster presence/absence across ${nRef} reference genomes`;
         }
         clusterZoom = 1; clusterPanX = 0; clusterPanY = 0;
@@ -3271,13 +3342,11 @@
             case 'pan_category': return COLORS.categorical(gene[F.PAN_CAT]);
             case 'conservation': return COLORS.sequential(gene[F.CONS_FRAC]);
             case 'avg_cons': return COLORS.consistency(gene[F.AVG_CONS]);
-            case 'is_hypo': return COLORS.binary(gene[F.IS_HYPO] ? 0 : 1);
             case 'localization': return COLORS.categorical(gene[F.LOC]);
             case 'n_ko': return COLORS.sequential(Math.min(gene[F.N_KO] / 4, 1));
             case 'n_modules': return COLORS.sequential(Math.min(gene[F.N_MODULES] / 5, 1));
             case 'cluster_size': return COLORS.sequential(Math.min(gene[F.CLUSTER_SIZE] / 200, 1));
             case 'specificity': return COLORS.consistency(gene[F.SPECIFICITY]);
-            case 'agreement': return COLORS.categorical(gene[F.AGREEMENT]);
             default: return '#6366f1';
         }
     }
@@ -3384,14 +3453,8 @@
             case 'avg_cons': case 'specificity':
                 html = '<div class="legend-item"><span>0</span><div class="legend-color" style="background: linear-gradient(to right, #ef4444, #fbbf24, #22c55e); width: 50px;"></div><span>1</span><div class="legend-color" style="background: #e5e7eb;"></div>N/A</div>';
                 break;
-            case 'is_hypo':
-                html = '<div class="legend-item"><div class="legend-color" style="background:#6366f1"></div>Has function</div><div class="legend-item"><div class="legend-color" style="background:#f97316"></div>Hypothetical</div>';
-                break;
             case 'localization':
                 html = LOC_NAMES.map((name, i) => `<div class="legend-item"><div class="legend-color" style="background:${COLORS.categorical(i)}"></div>${name}</div>`).join('');
-                break;
-            case 'agreement':
-                html = AGREE_NAMES.map((name, i) => `<div class="legend-item"><div class="legend-color" style="background:${COLORS.categorical(i)}"></div>${name}</div>`).join('');
                 break;
         }
         legend.innerHTML = html;
@@ -3513,6 +3576,408 @@
         window.addEventListener('resize', () => {
             if (activeTab === 'cluster') { resizeCluster(); renderCluster(); }
         });
+    }
+
+    // ============================================================
+    // === DISTRIBUTIONS TAB ===
+    // ============================================================
+
+    function initDistributions() {
+        if (distributionsLoaded) return;
+        if (!genes || genes.length === 0) {
+            console.error('Cannot initialize distributions: genes not loaded');
+            return;
+        }
+
+        // Populate track dropdown
+        const select = document.getElementById('dist-track-select');
+        select.innerHTML = '<option value="">-- Choose a track --</option>';
+
+        TRACKS.forEach(track => {
+            const option = document.createElement('option');
+            option.value = track.id;
+            option.textContent = track.name;
+            select.appendChild(option);
+        });
+
+        distributionsLoaded = true;
+    }
+
+    function renderDistributions() {
+        const trackId = document.getElementById('dist-track-select').value;
+        if (!trackId) {
+            document.getElementById('distributions-container').innerHTML = `
+                <div style="text-align: center; color: var(--kb-base-light); margin-top: 100px;">
+                    <p style="font-size: 16px; margin-bottom: 8px;">📊 Select a track to view its distribution</p>
+                    <p style="font-size: 12px;">Use the dropdown in the sidebar to choose a track</p>
+                </div>
+            `;
+            return;
+        }
+
+        const track = TRACKS.find(t => t.id === trackId);
+        if (!track) return;
+
+        const container = document.getElementById('distributions-container');
+
+        if (track.type === 'categorical') {
+            renderCategoricalDistribution(track, container);
+        } else if (track.type === 'consistency') {
+            renderConsistencyDistribution(track, container);
+        } else if (track.type === 'sequential' || track.type === 'binary' || track.type === 'flux') {
+            renderNumericalDistribution(track, container);
+        }
+    }
+
+    function renderCategoricalDistribution(track, container) {
+        const counts = {};
+        const categories = track.categories || [];
+
+        // Initialize counts
+        if (Array.isArray(categories)) {
+            categories.forEach(cat => counts[cat] = 0);
+        } else if (typeof categories === 'string' && CONFIG.categories[categories]) {
+            CONFIG.categories[categories].forEach(cat => counts[cat] = 0);
+        } else if (track.id === 'pan_category') {
+            PAN_NAMES.forEach(cat => counts[cat] = 0);
+        } else if (track.id === 'localization') {
+            LOC_NAMES.forEach(cat => counts[cat] = 0);
+        }
+
+        // Count genes
+        genes.forEach(g => {
+            let val;
+            if (track.getValue) {
+                val = track.getValue(g);
+            } else {
+                const idx = g[track.field];
+                if (track.id === 'pan_category') val = PAN_NAMES[idx];
+                else if (track.id === 'localization') val = LOC_NAMES[idx];
+                else val = idx;
+            }
+            if (val !== undefined && val !== null) {
+                if (counts[val] !== undefined) counts[val]++;
+                else counts[val] = 1;
+            }
+        });
+
+        const total = genes.length;
+        const entries = Object.entries(counts).filter(([_, count]) => count > 0);
+
+        // Generate colors
+        const colors = entries.map((_, i) => COLORS.categorical(i));
+
+        // Render
+        let html = `
+            <div class="dist-chart-container">
+                <div class="dist-chart-title">${track.name} Distribution</div>
+                <div class="dist-stats">
+                    <div class="dist-stat-card">
+                        <div class="dist-stat-label">Total Genes</div>
+                        <div class="dist-stat-value">${total.toLocaleString()}</div>
+                    </div>
+                    <div class="dist-stat-card">
+                        <div class="dist-stat-label">Categories</div>
+                        <div class="dist-stat-value">${entries.length}</div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                    <div>
+                        <h3 style="font-size: 14px; font-weight: 600; color: var(--kb-base-dark); margin-bottom: 12px;">Bar Chart</h3>
+                        <svg class="dist-chart-svg" id="dist-bar-chart"></svg>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 14px; font-weight: 600; color: var(--kb-base-dark); margin-bottom: 12px;">Pie Chart</h3>
+                        <svg class="dist-chart-svg" id="dist-pie-chart" viewBox="0 0 400 300"></svg>
+                    </div>
+                </div>
+
+                <div class="dist-legend" id="dist-legend"></div>
+
+                <div style="margin-top: 20px;">
+                    <h3 style="font-size: 14px; font-weight: 600; color: var(--kb-base-dark); margin-bottom: 8px;">Breakdown</h3>
+                    <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--kb-base-lightest); border-bottom: 2px solid var(--kb-base-lighter);">
+                                <th style="padding: 8px; text-align: left;">Category</th>
+                                <th style="padding: 8px; text-align: right;">Count</th>
+                                <th style="padding: 8px; text-align: right;">Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${entries.map(([cat, count], i) => `
+                                <tr style="border-bottom: 1px solid var(--kb-base-lightest);">
+                                    <td style="padding: 8px;">
+                                        <span class="dist-legend-color" style="background: ${colors[i]}; display: inline-block; margin-right: 6px;"></span>
+                                        ${cat}
+                                    </td>
+                                    <td style="padding: 8px; text-align: right; font-weight: 600;">${count.toLocaleString()}</td>
+                                    <td style="padding: 8px; text-align: right;">${((count / total) * 100).toFixed(1)}%</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+        // Render bar chart
+        renderBarChart(entries, colors, total);
+
+        // Render pie chart
+        renderPieChart(entries, colors, total);
+
+        // Render legend
+        const legend = document.getElementById('dist-legend');
+        legend.innerHTML = entries.map(([cat, count], i) => `
+            <div class="dist-legend-item">
+                <div class="dist-legend-color" style="background: ${colors[i]};"></div>
+                <span>${cat}: ${count} (${((count / total) * 100).toFixed(1)}%)</span>
+            </div>
+        `).join('');
+    }
+
+    function renderBarChart(entries, colors, total) {
+        const svg = document.getElementById('dist-bar-chart');
+        const width = svg.clientWidth || 400;
+        const height = 300;
+        const margin = { top: 20, right: 20, bottom: 60, left: 60 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+
+        const maxCount = Math.max(...entries.map(([_, count]) => count));
+        const barWidth = chartWidth / entries.length;
+
+        let svgContent = `<svg width="${width}" height="${height}">`;
+
+        // Bars
+        entries.forEach(([cat, count], i) => {
+            const barHeight = (count / maxCount) * chartHeight;
+            const x = margin.left + i * barWidth + barWidth * 0.1;
+            const y = margin.top + chartHeight - barHeight;
+            const w = barWidth * 0.8;
+
+            svgContent += `
+                <rect x="${x}" y="${y}" width="${w}" height="${barHeight}"
+                      fill="${colors[i]}" class="dist-bar">
+                    <title>${cat}: ${count} genes (${((count / total) * 100).toFixed(1)}%)</title>
+                </rect>
+            `;
+        });
+
+        // Y-axis
+        svgContent += `<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartHeight}" stroke="var(--kb-base-light)" stroke-width="1"/>`;
+
+        // X-axis
+        svgContent += `<line x1="${margin.left}" y1="${margin.top + chartHeight}" x2="${margin.left + chartWidth}" y2="${margin.top + chartHeight}" stroke="var(--kb-base-light)" stroke-width="1"/>`;
+
+        // Y-axis ticks
+        for (let i = 0; i <= 5; i++) {
+            const y = margin.top + chartHeight - (i / 5) * chartHeight;
+            const val = Math.round((i / 5) * maxCount);
+            svgContent += `
+                <line x1="${margin.left - 5}" y1="${y}" x2="${margin.left}" y2="${y}" stroke="var(--kb-base-light)" stroke-width="1"/>
+                <text x="${margin.left - 10}" y="${y + 4}" text-anchor="end" font-size="10" fill="var(--kb-base)">${val}</text>
+            `;
+        }
+
+        // X-axis labels (abbreviated if needed)
+        entries.forEach(([cat, _], i) => {
+            const x = margin.left + i * barWidth + barWidth * 0.5;
+            const label = cat.length > 10 ? cat.substring(0, 8) + '...' : cat;
+            svgContent += `
+                <text x="${x}" y="${margin.top + chartHeight + 15}"
+                      text-anchor="middle" font-size="10" fill="var(--kb-base)"
+                      transform="rotate(45, ${x}, ${margin.top + chartHeight + 15})">${label}</text>
+            `;
+        });
+
+        svgContent += '</svg>';
+        svg.innerHTML = svgContent;
+    }
+
+    function renderPieChart(entries, colors, total) {
+        const svg = document.getElementById('dist-pie-chart');
+        const cx = 200, cy = 150, radius = 100;
+
+        let currentAngle = -Math.PI / 2;
+        let svgContent = '<g>';
+
+        entries.forEach(([cat, count], i) => {
+            const angle = (count / total) * 2 * Math.PI;
+            const endAngle = currentAngle + angle;
+
+            const x1 = cx + radius * Math.cos(currentAngle);
+            const y1 = cy + radius * Math.sin(currentAngle);
+            const x2 = cx + radius * Math.cos(endAngle);
+            const y2 = cy + radius * Math.sin(endAngle);
+
+            const largeArc = angle > Math.PI ? 1 : 0;
+
+            svgContent += `
+                <path d="M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z"
+                      fill="${colors[i]}" stroke="white" stroke-width="2" class="dist-bar">
+                    <title>${cat}: ${count} genes (${((count / total) * 100).toFixed(1)}%)</title>
+                </path>
+            `;
+
+            currentAngle = endAngle;
+        });
+
+        svgContent += '</g>';
+        svg.innerHTML = svgContent;
+    }
+
+    function renderConsistencyDistribution(track, container) {
+        const values = [];
+        const naCount = { count: 0 };
+
+        genes.forEach(g => {
+            const val = g[track.field];
+            if (val < 0) naCount.count++;
+            else values.push(val);
+        });
+
+        renderHistogram(track, values, naCount, container);
+    }
+
+    function renderNumericalDistribution(track, container) {
+        const values = [];
+
+        genes.forEach(g => {
+            let val;
+            if (track.getValue) {
+                val = track.getValue(g);
+            } else {
+                val = g[track.field];
+            }
+            if (val !== undefined && val !== null && !isNaN(val)) {
+                values.push(Number(val));
+            }
+        });
+
+        renderHistogram(track, values, null, container);
+    }
+
+    function renderHistogram(track, values, naCount, container) {
+        const total = genes.length;
+        const nBins = Math.min(20, Math.max(10, Math.ceil(Math.sqrt(values.length))));
+
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        const binWidth = (max - min) / nBins;
+
+        const bins = Array(nBins).fill(0);
+        values.forEach(v => {
+            const binIdx = Math.min(Math.floor((v - min) / binWidth), nBins - 1);
+            bins[binIdx]++;
+        });
+
+        const mean = values.reduce((a, b) => a + b, 0) / values.length;
+        const sorted = [...values].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+
+        let html = `
+            <div class="dist-chart-container">
+                <div class="dist-chart-title">${track.name} Distribution</div>
+                <div class="dist-stats">
+                    <div class="dist-stat-card">
+                        <div class="dist-stat-label">Total Genes</div>
+                        <div class="dist-stat-value">${values.length.toLocaleString()}</div>
+                    </div>
+                    ${naCount ? `
+                    <div class="dist-stat-card" style="border-left-color: var(--kb-base-light);">
+                        <div class="dist-stat-label">N/A</div>
+                        <div class="dist-stat-value">${naCount.count.toLocaleString()}</div>
+                    </div>
+                    ` : ''}
+                    <div class="dist-stat-card" style="border-left-color: var(--kb-accent);">
+                        <div class="dist-stat-label">Mean</div>
+                        <div class="dist-stat-value">${mean.toFixed(3)}</div>
+                    </div>
+                    <div class="dist-stat-card" style="border-left-color: var(--kb-accent);">
+                        <div class="dist-stat-label">Median</div>
+                        <div class="dist-stat-value">${median.toFixed(3)}</div>
+                    </div>
+                    <div class="dist-stat-card" style="border-left-color: var(--kb-accent);">
+                        <div class="dist-stat-label">Min / Max</div>
+                        <div class="dist-stat-value" style="font-size: 16px;">${min.toFixed(2)} / ${max.toFixed(2)}</div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 14px; font-weight: 600; color: var(--kb-base-dark); margin-bottom: 12px;">Histogram</h3>
+                <svg class="dist-chart-svg" id="dist-histogram" style="height: 350px;"></svg>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+        // Render histogram
+        const svg = document.getElementById('dist-histogram');
+        const width = svg.clientWidth || 600;
+        const height = 350;
+        const margin = { top: 20, right: 20, bottom: 60, left: 60 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+
+        const maxBinCount = Math.max(...bins);
+        const barWidth = chartWidth / nBins;
+
+        let svgContent = `<svg width="${width}" height="${height}">`;
+
+        // Bars
+        bins.forEach((count, i) => {
+            const barHeight = (count / maxBinCount) * chartHeight;
+            const x = margin.left + i * barWidth;
+            const y = margin.top + chartHeight - barHeight;
+            const binStart = min + i * binWidth;
+            const binEnd = binStart + binWidth;
+
+            svgContent += `
+                <rect x="${x}" y="${y}" width="${barWidth * 0.95}" height="${barHeight}"
+                      fill="var(--kb-primary)" opacity="0.8" class="dist-bar">
+                    <title>${binStart.toFixed(2)} - ${binEnd.toFixed(2)}: ${count} genes</title>
+                </rect>
+            `;
+        });
+
+        // Y-axis
+        svgContent += `<line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${margin.top + chartHeight}" stroke="var(--kb-base-light)" stroke-width="1"/>`;
+
+        // X-axis
+        svgContent += `<line x1="${margin.left}" y1="${margin.top + chartHeight}" x2="${margin.left + chartWidth}" y2="${margin.top + chartHeight}" stroke="var(--kb-base-light)" stroke-width="1"/>`;
+
+        // Y-axis label
+        svgContent += `<text x="${margin.left - 45}" y="${margin.top + chartHeight / 2}" text-anchor="middle" font-size="12" fill="var(--kb-base)" transform="rotate(-90, ${margin.left - 45}, ${margin.top + chartHeight / 2})">Gene Count</text>`;
+
+        // X-axis label
+        svgContent += `<text x="${margin.left + chartWidth / 2}" y="${height - 10}" text-anchor="middle" font-size="12" fill="var(--kb-base)">${track.name}</text>`;
+
+        // Y-axis ticks
+        for (let i = 0; i <= 5; i++) {
+            const y = margin.top + chartHeight - (i / 5) * chartHeight;
+            const val = Math.round((i / 5) * maxBinCount);
+            svgContent += `
+                <line x1="${margin.left - 5}" y1="${y}" x2="${margin.left}" y2="${y}" stroke="var(--kb-base-light)" stroke-width="1"/>
+                <text x="${margin.left - 10}" y="${y + 4}" text-anchor="end" font-size="10" fill="var(--kb-base)">${val}</text>
+            `;
+        }
+
+        // X-axis ticks
+        for (let i = 0; i <= nBins; i += Math.max(1, Math.floor(nBins / 8))) {
+            const x = margin.left + i * barWidth;
+            const val = min + i * binWidth;
+            svgContent += `
+                <line x1="${x}" y1="${margin.top + chartHeight}" x2="${x}" y2="${margin.top + chartHeight + 5}" stroke="var(--kb-base-light)" stroke-width="1"/>
+                <text x="${x}" y="${margin.top + chartHeight + 18}" text-anchor="middle" font-size="10" fill="var(--kb-base)">${val.toFixed(2)}</text>
+            `;
+        }
+
+        svgContent += '</svg>';
+        svg.innerHTML = svgContent;
     }
 
     // ============================================================
@@ -4289,64 +4754,11 @@
             summaryData = await resp.json();
             summaryLoaded = true;
             // Render data in the new locations
-            renderProteinDistribution();
             renderGenomeComparison();
             renderGrowthPhenotypes();
         } catch (e) {
             console.error('Failed to load summary data:', e);
         }
-    }
-
-    function renderProteinDistribution() {
-        // Render protein localization chart in Tracks tab sidebar
-        if (!genes || genes.length === 0) {
-            document.getElementById('protein-distribution').innerHTML = '<span style="color:#9D9389;">No data loaded</span>';
-            return;
-        }
-
-        const locCounts = {};
-        LOC_NAMES.forEach(name => locCounts[name] = 0);
-
-        genes.forEach(g => {
-            const locIdx = g[F.LOC];
-            const locName = LOC_NAMES[locIdx] || 'Unknown';
-            locCounts[locName]++;
-        });
-
-        const total = genes.length;
-        let html = '<div style="color:var(--kb-base); line-height:1.6;">';
-
-        // Color scheme for compartments
-        const locColors = {
-            'Cytoplasmic': '#3b82f6',
-            'CytoMembrane': '#8b5cf6',
-            'Periplasmic': '#22c55e',
-            'OuterMembrane': '#f59e0b',
-            'Extracellular': '#ef4444',
-            'Unknown': '#9ca3af'
-        };
-
-        LOC_NAMES.forEach(locName => {
-            const count = locCounts[locName];
-            const pct = ((count / total) * 100).toFixed(1);
-            const barWidth = pct;
-            const color = locColors[locName] || '#9ca3af';
-
-            html += `
-                <div style="margin-bottom:8px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                        <span style="font-weight:500;">${locName}</span>
-                        <span style="color:var(--kb-base-dark); font-weight:600;">${count} (${pct}%)</span>
-                    </div>
-                    <div style="background:var(--kb-base-lightest); height:12px; border-radius:2px; overflow:hidden;">
-                        <div style="background:${color}; height:100%; width:${barWidth}%; opacity:0.8;"></div>
-                    </div>
-                </div>
-            `;
-        });
-
-        html += '</div>';
-        document.getElementById('protein-distribution').innerHTML = html;
     }
 
     function renderGenomeComparison() {

@@ -29,7 +29,7 @@
     "behavior": {
         "service-mapping": {
             "url": "",
-            "name": "KBDatalakeDashboard",
+            "name": "KBDatalakeDashboard2",
             "method": "run_genome_datalake_dashboard",
             "input_mapping": [
                 {
