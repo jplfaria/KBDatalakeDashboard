@@ -68,10 +68,12 @@ class KBDatalakeDashboard:
         # ctx is the context object
         # return variables are: output
         #BEGIN run_genome_datalake_dashboard
-        print("=" * 80)
-        print("START: run_genome_datalake_dashboard")
-        print(f"Params: {params}")
-        print("=" * 80)
+        import sys
+        print("=" * 80, flush=True)
+        print("START: run_genome_datalake_dashboard", flush=True)
+        print(f"Params: {params}", flush=True)
+        print("=" * 80, flush=True)
+        sys.stdout.flush()
         self.logger.info(f"Running genome datalake dashboard with params: {params}")
 
         # Validate required parameters
@@ -118,13 +120,25 @@ class KBDatalakeDashboard:
         self.logger.info(f"Wrote app-config.json with UPA: {app_config['upa']}")
 
         # Upload HTML directory to Shock
-        print("Uploading HTML directory to Shock...")
-        print("This may take a while for large directories...")
+        # Check directory size before upload
+        import subprocess
+        try:
+            du_output = subprocess.check_output(['du', '-sh', output_directory]).decode('utf-8')
+            dir_size = du_output.split()[0]
+            print(f"Directory size to upload: {dir_size}", flush=True)
+        except:
+            print("Could not determine directory size", flush=True)
+
+        print("Uploading HTML directory to Shock...", flush=True)
+        print("This may take a while for large directories...", flush=True)
+        sys.stdout.flush()
+
         shock_id = self.dfu.file_to_shock({
             'file_path': output_directory,
             'pack': 'zip'
         })['shock_id']
-        print(f"Upload complete! Shock ID: {shock_id}")
+        print(f"Upload complete! Shock ID: {shock_id}", flush=True)
+        sys.stdout.flush()
 
         self.logger.info(f"HTML directory contents: {os.listdir(output_directory)}")
         self.logger.info(f"Shock ID: {shock_id}")
