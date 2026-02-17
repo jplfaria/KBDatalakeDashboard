@@ -14,11 +14,9 @@ elif [ "${1}" = "test" ] ; then
   echo "Run Tests"
   make test
 elif [ "${1}" = "async" ] ; then
-  # Modern KBase SDK: always use direct execution via bin script
-  # Arguments are passed via remaining args (job_id, callback_url)
-  echo "Async execution: calling bin script"
-  shift  # Remove "async" from args
-  exec ./bin/run_KBDatalakeDashboard_async_job.sh "$@"
+  # Run async server with config from environment
+  echo "Async execution: starting server"
+  sh ./scripts/run_async.sh
 elif [ "${1}" = "init" ] ; then
   echo "Initialize module"
   mkdir -p "/data"
