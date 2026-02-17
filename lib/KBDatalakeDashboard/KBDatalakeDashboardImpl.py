@@ -45,13 +45,31 @@ class KBDatalakeDashboard:
     # be found
     def __init__(self, config):
         #BEGIN_CONSTRUCTOR
+        import sys
+        print("=" * 80, flush=True)
+        print("KBDatalakeDashboard __init__ called", flush=True)
+        print(f"Config keys: {list(config.keys())}", flush=True)
+        sys.stdout.flush()
+
         self.callback_url = os.environ['SDK_CALLBACK_URL']
+        print(f"Callback URL: {self.callback_url}", flush=True)
+        sys.stdout.flush()
+
         self.shared_folder = config['scratch']
+        print(f"Shared folder: {self.shared_folder}", flush=True)
+        sys.stdout.flush()
+
         self.config = config
         logging.basicConfig(format='%(created)s %(levelname)s: %(message)s',
                             level=logging.INFO)
         self.logger = logging.getLogger(__name__)
+
+        print("Initializing DataFileUtil...", flush=True)
+        sys.stdout.flush()
         self.dfu = DataFileUtil(self.callback_url)
+        print("DataFileUtil initialized successfully", flush=True)
+        print("=" * 80, flush=True)
+        sys.stdout.flush()
         #END_CONSTRUCTOR
         pass
 
