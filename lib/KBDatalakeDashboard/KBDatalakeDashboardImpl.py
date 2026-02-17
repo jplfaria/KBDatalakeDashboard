@@ -68,23 +68,39 @@ class KBDatalakeDashboard:
         # ctx is the context object
         # return variables are: output
         #BEGIN run_genome_datalake_dashboard
+        print("=" * 80)
+        print("START: run_genome_datalake_dashboard")
+        print(f"Params: {params}")
+        print("=" * 80)
         self.logger.info(f"Running genome datalake dashboard with params: {params}")
 
         # Validate required parameters
+        print("Validating parameters...")
         self._validate_params(params, ['input_ref', 'workspace_name'])
+        print("Parameters validated successfully")
 
         workspace_name = params['workspace_name']
         input_ref = params['input_ref']
+        print(f"Workspace: {workspace_name}, Input ref: {input_ref}")
 
         # Prepare HTML report output directory
+        print("Creating output directory...")
         output_directory = os.path.join(self.shared_folder, str(uuid.uuid4()))
+        print(f"Output directory: {output_directory}")
+
+        print("Copying HTML directory from /kb/module/data/html...")
         shutil.copytree('/kb/module/data/html', output_directory)
+        print("HTML directory copied successfully")
 
         # Copy heatmap viewer to a subdirectory
+        print("Copying heatmap viewer...")
         heatmap_dir = os.path.join(output_directory, 'heatmap')
+        print(f"Heatmap directory: {heatmap_dir}")
         shutil.copytree('/kb/module/data/heatmap', heatmap_dir)
+        print("Heatmap viewer copied successfully")
 
         # Write app-config.json to both directories so both viewers know which object to display
+        print("Writing app-config.json...")
         app_config = {
             "upa": input_ref
         }
@@ -92,17 +108,23 @@ class KBDatalakeDashboard:
         app_config_path = os.path.join(output_directory, 'app-config.json')
         with open(app_config_path, 'w') as f:
             json.dump(app_config, f, indent=4)
+        print(f"Wrote app-config.json to {app_config_path}")
+
         # Write to heatmap directory for heatmap viewer
         heatmap_config_path = os.path.join(heatmap_dir, 'app-config.json')
         with open(heatmap_config_path, 'w') as f:
             json.dump(app_config, f, indent=4)
+        print(f"Wrote app-config.json to {heatmap_config_path}")
         self.logger.info(f"Wrote app-config.json with UPA: {app_config['upa']}")
 
         # Upload HTML directory to Shock
+        print("Uploading HTML directory to Shock...")
+        print("This may take a while for large directories...")
         shock_id = self.dfu.file_to_shock({
             'file_path': output_directory,
             'pack': 'zip'
         })['shock_id']
+        print(f"Upload complete! Shock ID: {shock_id}")
 
         self.logger.info(f"HTML directory contents: {os.listdir(output_directory)}")
         self.logger.info(f"Shock ID: {shock_id}")
@@ -123,6 +145,7 @@ class KBDatalakeDashboard:
         ]
 
         # Create KBase report
+        print("Creating KBase report...")
         report_client = KBaseReport(self.callback_url)
         report_params = {
             'message': '',
@@ -132,13 +155,19 @@ class KBDatalakeDashboard:
             'direct_html_link_index': 0,
             'html_window_height': 800,
         }
+        print(f"Report params: {report_params}")
 
+        print("Calling create_extended_report...")
         report_info = report_client.create_extended_report(report_params)
+        print(f"Report created! Report info: {report_info}")
 
         output = {
             'report_name': report_info['name'],
             'report_ref': report_info['ref'],
         }
+        print("=" * 80)
+        print(f"SUCCESS! Report name: {output['report_name']}, ref: {output['report_ref']}")
+        print("=" * 80)
         #END run_genome_datalake_dashboard
 
         # At some point might do deeper type checking...
