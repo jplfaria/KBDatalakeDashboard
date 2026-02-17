@@ -25,5 +25,8 @@ elif [ "${1}" = "report" ] ; then
   export KB_SDK_COMPILE_REPORT_FILE=./work/compile_report.json
   make compile
 else
-  echo Unknown
+  # If we get here with arguments, assume it's direct async execution
+  # KBase JobRunner passes: job_id, callback_url, job_params
+  echo "Direct async execution mode - calling bin script with arguments"
+  exec ./bin/run_KBDatalakeDashboard_async_job.sh "$@"
 fi
