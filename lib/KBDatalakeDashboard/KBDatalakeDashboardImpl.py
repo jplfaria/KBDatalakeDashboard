@@ -251,8 +251,7 @@ class KBDatalakeDashboard:
             try:
                 dl_result = self.dfu.shock_to_file({
                     'shock_id': shock_node_id,
-                    'file_path': db_download_dir,
-                    'unpack': 'none'
+                    'file_path': db_download_dir
                 })
                 db_path = dl_result['file_path']
                 print(f"  Downloaded: {db_path}", flush=True)
