@@ -235,7 +235,7 @@ def extract_genes_data(db_path, user_genome_id):
     [24] AGREEMENT    [25] CLUSTER_SIZE [26] N_MODULES     [27] EC_MAP_CONS
     [28] PROT_LEN     [29] REACTIONS    [30] RICH_FLUX     [31] RICH_CLASS
     [32] MIN_FLUX     [33] MIN_CLASS    [34] PSORTB_NEW    [35] ESSENTIALITY
-    [36] N_PHENOTYPES [37] N_FITNESS
+    [36] N_PHENOTYPES [37] N_FITNESS [38] FITNESS_AVG
     """
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -355,15 +355,20 @@ def extract_genes_data(db_path, user_genome_id):
     logger.info("Loading phenotype data...")
     gene_phenotype_counts = defaultdict(set)
     gene_fitness_counts = defaultdict(int)
+    gene_fitness_avg_sum = defaultdict(float)
+    gene_fitness_avg_count = defaultdict(int)
     try:
         for row in conn.execute("""
-            SELECT gene_id, phenotype_id, fitness_match
+            SELECT gene_id, phenotype_id, fitness_match, fitness_avg
             FROM gene_phenotype
             WHERE genome_id = ?
         """, (user_genome_id,)):
             gene_phenotype_counts[row["gene_id"]].add(row["phenotype_id"])
-            if row["fitness_match"] and str(row["fitness_match"]).lower() == "yes":
+            if row["fitness_match"] == "has_score":
                 gene_fitness_counts[row["gene_id"]] += 1
+                if row["fitness_avg"] is not None:
+                    gene_fitness_avg_sum[row["gene_id"]] += row["fitness_avg"]
+                    gene_fitness_avg_count[row["gene_id"]] += 1
         logger.info(f"  {len(gene_phenotype_counts)} genes with phenotype data")
     except sqlite3.OperationalError:
         logger.info("  (gene_phenotype table not found)")
@@ -574,8 +579,12 @@ def extract_genes_data(db_path, user_genome_id):
         # Phenotype data
         n_phenotypes = len(gene_phenotype_counts.get(fid, set()))
         n_fitness = gene_fitness_counts.get(fid, 0)
+        if gene_fitness_avg_count.get(fid, 0) > 0:
+            fitness_avg = round(gene_fitness_avg_sum[fid] / gene_fitness_avg_count[fid], 4)
+        else:
+            fitness_avg = -1
 
-        # ── Build 38-field gene array ───────────────────────────────────
+        # ── Build 39-field gene array ───────────────────────────────────
         gene = [
             order_idx,      # [0]  ID
             fid,            # [1]  FID
@@ -615,6 +624,7 @@ def extract_genes_data(db_path, user_genome_id):
             essentiality,   # [35] ESSENTIALITY
             n_phenotypes,   # [36] N_PHENOTYPES
             n_fitness,      # [37] N_FITNESS
+            fitness_avg,    # [38] FITNESS_AVG
         ]
         genes.append(gene)
 

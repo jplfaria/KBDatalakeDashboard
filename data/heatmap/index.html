@@ -60,6 +60,33 @@
             padding: 0 16px;
             flex-shrink: 0;
         }
+        .nav-context {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--kb-base);
+            margin-right: 12px;
+            white-space: nowrap;
+            border-right: 1px solid var(--kb-base-lighter);
+            padding-right: 12px;
+        }
+        .nav-context a {
+            color: var(--kb-primary);
+            text-decoration: none;
+            font-size: 11px;
+        }
+        .nav-context a:hover { text-decoration: underline; }
+        .nav-context .nav-sep { color: var(--kb-base-light); margin: 0 2px; }
+        .nav-context select {
+            font-size: 11px;
+            padding: 2px 6px;
+            border: 1px solid var(--kb-base-lighter);
+            border-radius: 3px;
+            background: white;
+            cursor: pointer;
+            max-width: 200px;
+        }
         .tab-btn {
             padding: 10px 20px;
             background: none;
@@ -579,6 +606,7 @@
     <!-- Tab Bar -->
     <div class="tab-bar">
         <img src="kbase_logo.png" alt="KBase" style="height: 28px; margin-right: 12px; align-self: center;">
+        <div class="nav-context" id="nav-context" style="display:none"></div>
         <button class="tab-btn active" data-tab="tracks" onclick="switchTab('tracks')">Tracks</button>
         <button class="tab-btn" data-tab="distributions" onclick="switchTab('distributions')">Distributions</button>
         <button class="tab-btn" data-tab="tree" onclick="switchTab('tree')">Tree</button>
@@ -1746,6 +1774,22 @@
             enabled: false,
             desc: 'Number of genes associated with metabolic reactions in the FBA model. Indicates metabolic capability - more genes typically means broader metabolic versatility. User genome only (requires genome-specific metabolic model).'
         },
+        {
+            id: 'checkm_completeness',
+            name: 'CheckM Completeness',
+            short: 'Complete',
+            color: '#22c55e',
+            enabled: false,
+            desc: 'CheckM estimated genome completeness (%). Higher is better. Values above 90% indicate high-quality draft genomes. Based on marker gene analysis.'
+        },
+        {
+            id: 'checkm_contamination',
+            name: 'CheckM Contamination',
+            short: 'Contam',
+            color: '#ef4444',
+            enabled: false,
+            desc: 'CheckM estimated contamination (%). Lower is better. Values below 5% indicate clean assemblies. High contamination suggests mixed samples or assembly errors.'
+        },
     ];
 
     // === TAB SWITCHING ===
@@ -1816,10 +1860,41 @@
             // Update page title
             if (CONFIG.title) document.title = CONFIG.title;
 
+            // Load app-config.json for navigation context (KBase)
+            try {
+                const appResp = await fetch('app-config.json');
+                if (appResp.ok) {
+                    const appConfig = await appResp.json();
+                    if (appConfig.navigation) renderNavContext(appConfig.navigation);
+                }
+            } catch (e) { /* standalone mode, no navigation */ }
+
         } catch (e) {
             console.log('No config.json found, using defaults');
             CONFIG = {};
         }
+    }
+
+    function renderNavContext(nav) {
+        const el = document.getElementById('nav-context');
+        if (!el) return;
+        let html = '';
+        if (nav.is_multi_pangenome && nav.siblings && nav.siblings.length > 1) {
+            html += `<a href="${nav.index_url}">Index</a>`;
+            html += `<span class="nav-sep">&rsaquo;</span>`;
+            html += `<select onchange="if(this.value)window.location.href=this.value">`;
+            nav.siblings.forEach((s, i) => {
+                const sel = i === nav.current_index ? ' selected' : '';
+                html += `<option value="${s.url}"${sel}>${s.organism} (${s.n_genes})</option>`;
+            });
+            html += `</select>`;
+            html += `<span class="nav-sep">|</span>`;
+            html += `<a href="${nav.tables_url}">Tables</a>`;
+        } else if (nav.tables_url) {
+            html += `<a href="${nav.tables_url}">Tables</a>`;
+        }
+        el.innerHTML = html;
+        if (html) el.style.display = 'flex';
     }
 
     async function loadData() {
@@ -2608,7 +2683,7 @@
             const raw = track.getValue ? track.getValue(gene) : (track.field >= 0 ? gene[track.field] : null);
             if (raw != null) {
                 if (track.type === 'consistency') trackValue = raw < 0 ? 'N/A' : raw.toFixed(4);
-                else if (track.type === 'sequential' || track.type === 'flux') trackValue = typeof raw === 'number' ? (Number.isInteger(raw) ? raw : raw.toFixed(4)) : raw;
+                else if (track.type === 'sequential' || track.type === 'flux' || track.type === 'diverging') trackValue = typeof raw === 'number' ? (raw === -1 && track.type === 'diverging' ? 'N/A' : Number.isInteger(raw) ? raw : raw.toFixed(4)) : raw;
                 else if (track.type === 'binary') trackValue = raw ? '+' : '-';
                 else if (track.type === 'categorical' && track.categories) trackValue = track.categories[raw] || raw;
                 else if (track.type === 'flux_class') trackValue = FLUX_CLASS_LABELS[raw] || raw;
@@ -2694,7 +2769,7 @@
         // Compute min/max for sequential and flux tracks
         const trackStats = {};
         enabledTracks.forEach(track => {
-            if (track.type === 'sequential' || track.type === 'flux') {
+            if (track.type === 'sequential' || track.type === 'flux' || track.type === 'diverging') {
                 let min = Infinity, max = -Infinity;
                 for (let i = 0; i < genes.length; i++) {
                     const v = track.getValue ? track.getValue(genes[i]) : genes[i][track.field];
@@ -2755,6 +2830,22 @@
                         const b = Math.floor(255 - (255 - 38) * t);
                         color = `rgb(${r}, ${g}, ${b})`;
                     }
+                } else if (track.type === 'diverging') {
+                    // Diverging scale: red (negative) - white (0) - green (positive), gray for N/A (-1)
+                    if (value === -1 || value === null || value === undefined) {
+                        color = '#e5e7eb';
+                    } else {
+                        const stats = trackStats[track.id];
+                        const maxAbs = Math.max(Math.abs(stats.min < 0 ? stats.min : 0), Math.abs(stats.max));
+                        const normalized = value / (maxAbs || 1);
+                        if (normalized < 0) {
+                            const t = Math.min(1, Math.abs(normalized));
+                            color = `rgb(255, ${Math.floor(255 - 200 * t)}, ${Math.floor(255 - 200 * t)})`;
+                        } else {
+                            const t = Math.min(1, normalized);
+                            color = `rgb(${Math.floor(255 - 200 * t)}, 255, ${Math.floor(255 - 200 * t)})`;
+                        }
+                    }
                 } else if (track.type === 'flux_class') {
                     // Categorical colors for flux classes
                     color = FLUX_CLASS_COLORS[value] || '#e5e7eb';
@@ -2798,6 +2889,13 @@
                 '<div class="legend-color" style="background: linear-gradient(to right, #2563eb, #ffffff, #dc2626); width: 60px;"></div>' +
                 '<span>Forward</span>',
             tip: 'Metabolic flux direction and magnitude. Blue = reverse flux (consuming product). White = zero/blocked. Red = forward flux (producing product). Higher intensity = higher flux. Data from Flux Balance Analysis.'
+        },
+        diverging: {
+            html: '<span class="legend-label">Fitness:</span><span>Negative</span>' +
+                '<div class="legend-color" style="background: linear-gradient(to right, #ff3737, #ffffff, #37ff37); width: 60px;"></div>' +
+                '<span>Positive</span>' +
+                '<div class="legend-color" style="background: #e5e7eb;"></div><span>N/A</span>',
+            tip: 'Average fitness score across phenotype conditions. Red = gene disruption causes growth defect (negative fitness). Green = growth advantage. White = neutral. Gray = no fitness data available.'
         },
         flux_class: {
             html: '<span class="legend-label">Flux Class:</span>' +
@@ -2866,6 +2964,11 @@
         // Consistency
         if (types.has('consistency')) {
             items.push({ html: LEGEND_DEFS.consistency.html, tip: LEGEND_DEFS.consistency.tip });
+        }
+
+        // Diverging (fitness)
+        if (types.has('diverging')) {
+            items.push({ html: LEGEND_DEFS.diverging.html, tip: LEGEND_DEFS.diverging.tip });
         }
 
         // Binary tracks - show per-track legends
@@ -3144,8 +3247,10 @@
             const fontWeight = isUser ? '700' : '400';
             const fontSize = isUser ? '12' : '11';
 
-            // Leaf dot
-            svg += `<circle cx="${labelWidth}" cy="${y}" r="${isUser ? 4 : 3}" fill="${isUser ? '#dc2626' : '#64748b'}"/>`;
+            // Leaf dot - color by genome kind
+            const kind = meta.kind || '';
+            const dotColor = isUser ? '#dc2626' : kind === 'clade' ? '#8b5cf6' : '#64748b';
+            svg += `<circle cx="${labelWidth}" cy="${y}" r="${isUser ? 4 : 3}" fill="${dotColor}"/>`;
 
             // Highlight band for user genome
             if (isUser) {
@@ -3230,13 +3335,17 @@
                 if (pheno) {
                     phenoHtml = `<div style="margin-top:6px; padding-top:6px; border-top:1px solid rgba(255,255,255,0.1);"><span style="color:#9D9389;">Phenotype predictions:</span> <span style="color:#f97316;">${pheno.positive_growth} positive</span>, <span style="color:#2563eb;">${pheno.negative_growth} negative</span></div>`;
                 }
+                const kindLabel = meta.kind ? `<span style="color:#9D9389; font-size:10px; margin-left:6px;">[${meta.kind}]</span>` : '';
+                const checkmHtml = meta.checkm_completeness != null ?
+                    `<div><span style="color:#9D9389;">CheckM:</span> <span style="color:#22c55e;">${meta.checkm_completeness.toFixed(1)}%</span> complete, <span style="color:${meta.checkm_contamination > 5 ? '#ef4444' : '#9D9389'}">${meta.checkm_contamination.toFixed(1)}%</span> contamination</div>` : '';
                 tooltip.innerHTML = `
-                    <div style="font-weight:700; color:#66B1DB; margin-bottom:4px;">${gid}</div>
+                    <div style="font-weight:700; color:#66B1DB; margin-bottom:4px;">${gid}${kindLabel}</div>
                     <div>${tax.species || 'Unknown species'}</div>
                     <div style="color:#9D9389; font-size:10px;">${[tax.phylum, tax.class, tax.order, tax.family, tax.genus].filter(Boolean).join(' > ')}</div>
                     <div style="margin-top:6px;"><span style="color:#9D9389;">Features:</span> ${meta.n_features || '?'} | <span style="color:#9D9389;">Contigs:</span> ${meta.n_contigs || '?'}</div>
                     <div><span style="color:#9D9389;">Genes:</span> ${stats.n_genes || '?'} | <span style="color:#9D9389;">Clusters:</span> ${stats.n_clusters || '?'} | <span style="color:#9D9389;">Core:</span> ${stats.core_pct != null ? (stats.core_pct * 100).toFixed(1) + '%' : '?'}</div>
                     <div><span style="color:#9D9389;">ANI to user:</span> ${ani}</div>
+                    ${checkmHtml}
                     ${phenoHtml}
                 `;
                 tooltip.style.display = 'block';
@@ -3615,7 +3724,7 @@
             renderCategoricalDistribution(track, container);
         } else if (track.type === 'consistency') {
             renderConsistencyDistribution(track, container);
-        } else if (track.type === 'sequential' || track.type === 'binary' || track.type === 'flux') {
+        } else if (track.type === 'sequential' || track.type === 'binary' || track.type === 'flux' || track.type === 'diverging') {
             renderNumericalDistribution(track, container);
         }
     }
@@ -4815,6 +4924,11 @@
                         <div style="font-size:10px; color:var(--kb-base); margin-bottom:2px;">Avg Missing Reactions</div>
                         <div style="font-size:20px; font-weight:700; color:#3b82f6;">${(growthData.avg_negative_gaps || 0).toFixed(1)}</div>
                     </div>
+                    ${growthData.zero_gap_count != null ? `
+                    <div style="padding:8px; background:var(--kb-base-lightest); border-radius:4px; border-left:3px solid #8b5cf6;">
+                        <div style="font-size:10px; color:var(--kb-base); margin-bottom:2px;">Complete Models (zero gaps)</div>
+                        <div style="font-size:20px; font-weight:700; color:#8b5cf6;">${growthData.zero_gap_count}</div>
+                    </div>` : ''}
                 </div>
             </div>
         `;

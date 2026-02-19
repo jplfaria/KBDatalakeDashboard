@@ -82,6 +82,7 @@ class KBDatalakeDashboard:
                     <td>{info['n_ref_genomes']}</td>
                     <td>
                         <a href="{info['heatmap_path']}" class="btn">Dashboard</a>
+                        <a href="tables/index.html" class="btn btn-secondary">Tables</a>
                     </td>
                 </tr>
 """
@@ -107,6 +108,8 @@ class KBDatalakeDashboard:
         .btn {{ display: inline-block; padding: 6px 16px; background: #026DAA; color: white;
                 text-decoration: none; border-radius: 4px; font-size: 13px; }}
         .btn:hover {{ background: #034e7a; }}
+        .btn-secondary {{ background: #6b7280; margin-left: 6px; }}
+        .btn-secondary:hover {{ background: #4b5563; }}
     </style>
 </head>
 <body>
@@ -290,10 +293,6 @@ class KBDatalakeDashboard:
                 size_kb = os.path.getsize(filepath) / 1024
                 print(f"  Wrote {filename} ({size_kb:.0f} KB)", flush=True)
 
-            # Write app-config.json
-            with open(os.path.join(heatmap_dir, 'app-config.json'), 'w') as f:
-                json.dump(app_config, f, indent=4)
-
             heatmap_path = f'{pangenome_subdir}/heatmap/index.html'
             pangenomes_info.append({
                 'organism': organism,
@@ -301,6 +300,7 @@ class KBDatalakeDashboard:
                 'n_genes': n_genes,
                 'n_ref_genomes': n_ref,
                 'heatmap_path': heatmap_path,
+                'heatmap_dir': heatmap_dir,
             })
 
             # Clean up downloaded DB to save space
@@ -314,6 +314,35 @@ class KBDatalakeDashboard:
 
         if not pangenomes_info:
             raise ValueError("No pangenomes could be processed successfully")
+
+        # ── Step 3b: Write app-config.json with navigation context ────
+        is_multi = len(pangenomes_info) > 1
+        siblings = []
+        for si, sinfo in enumerate(pangenomes_info):
+            s_slug = sinfo['pangenome_id'].replace(' ', '_').replace('/', '_')
+            siblings.append({
+                'organism': sinfo['organism'],
+                'pangenome_id': sinfo['pangenome_id'],
+                'n_genes': sinfo['n_genes'],
+                'url': f'../../pangenome_{si}_{s_slug}/heatmap/index.html'
+            })
+
+        for idx, info in enumerate(pangenomes_info):
+            nav_config = {
+                'upa': input_ref,
+                'navigation': {
+                    'index_url': '../../index.html',
+                    'tables_url': '../../tables/index.html',
+                    'organism': info['organism'],
+                    'pangenome_id': info['pangenome_id'],
+                    'is_multi_pangenome': is_multi,
+                    'current_index': idx,
+                    'siblings': siblings
+                }
+            }
+            with open(os.path.join(info['heatmap_dir'], 'app-config.json'), 'w') as f:
+                json.dump(nav_config, f, indent=4)
+        print(f"Wrote app-config.json for {len(pangenomes_info)} pangenome(s)", flush=True)
 
         # ── Step 4: Generate index page ─────────────────────────────────
         print(f"\nGenerating index page for {len(pangenomes_info)} pangenome(s)...", flush=True)

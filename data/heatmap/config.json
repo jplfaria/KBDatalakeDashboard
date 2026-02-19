@@ -24,7 +24,7 @@
     "EC_MAP_CONS": 27, "PROT_LEN": 28,
     "REACTIONS": 29, "RICH_FLUX": 30, "RICH_CLASS": 31, "MIN_FLUX": 32,
     "MIN_CLASS": 33, "PSORTB_NEW": 34, "ESSENTIALITY": 35,
-    "N_PHENOTYPES": 36, "N_FITNESS": 37
+    "N_PHENOTYPES": 36, "N_FITNESS": 37, "FITNESS_AVG": 38
   },
   "categories": {
     "localization": ["Cytoplasmic", "CytoMembrane", "Periplasmic", "OuterMembrane", "Extracellular", "Unknown"],
@@ -58,11 +58,12 @@
     { "id": "rich_class", "name": "Flux Class (rich)", "field": "RICH_CLASS", "type": "categorical", "enabled": false, "categories": ["essential", "variable", "blocked"] },
     { "id": "min_class", "name": "Flux Class (minimal)", "field": "MIN_CLASS", "type": "categorical", "enabled": false, "categories": ["essential", "variable", "blocked"] },
     { "id": "essentiality", "name": "Gene Essentiality", "field": "ESSENTIALITY", "type": "sequential", "enabled": false },
-    { "id": "n_phenotypes", "name": "# Phenotypes", "field": "N_PHENOTYPES", "type": "sequential", "enabled": false }
+    { "id": "n_phenotypes", "name": "# Phenotypes", "field": "N_PHENOTYPES", "type": "sequential", "enabled": false },
+    { "id": "n_fitness", "name": "# Fitness Scores", "field": "N_FITNESS", "type": "sequential", "enabled": false },
+    { "id": "fitness_avg", "name": "Avg Fitness Score", "field": "FITNESS_AVG", "type": "diverging", "enabled": false }
   ],
   "placeholder_tracks": [
-    { "id": "neighborhood", "name": "Neighborhood Conservation*", "pending": true },
-    { "id": "n_fitness", "name": "# Fitness Scores*", "pending": true }
+    { "id": "neighborhood", "name": "Neighborhood Conservation*", "pending": true }
   ],
   "sort_presets": [
     { "id": "genome", "name": "Genome Order" },
