@@ -4,7 +4,7 @@
         "chenry"
     ],
     "contact": "https://kbase.us/contact-us/",
-    "categories": ["active", "BERDL"],
+    "categories": ["active", "KBERDL"],
     "widgets": {
         "input": null,
         "output": "no-display"
