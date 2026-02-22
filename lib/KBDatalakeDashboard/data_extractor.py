@@ -235,10 +235,10 @@ def extract_gene_name(aliases, fid):
 def derive_organism_name(user_genome_id, gtdb_taxonomy, ncbi_taxonomy):
     """Derive a human-readable organism name from available metadata.
 
-    Priority: GTDB species name > NCBI species name > parsed genome ID.
+    Priority: NCBI species name > GTDB species name > parsed genome ID.
     """
     # Try GTDB taxonomy (e.g., 'd__Bacteria;...;s__Escherichia coli')
-    for taxonomy in [gtdb_taxonomy, ncbi_taxonomy]:
+    for taxonomy in [ncbi_taxonomy, gtdb_taxonomy]:
         if taxonomy and taxonomy.strip():
             # Extract species from taxonomy string
             parts = taxonomy.split(";")
@@ -856,25 +856,31 @@ def extract_tree_data(db_path, user_genome_id):
         from scipy.cluster.hierarchy import leaves_list, linkage
         from scipy.spatial.distance import pdist, squareform
 
-        matrix = np.zeros((n_genomes, n_clusters), dtype=np.uint8)
-        for gi, gid in enumerate(genome_ids):
-            for cid in all_clusters_by_genome[gid]:
-                if cid in cluster_to_idx:
-                    matrix[gi, cluster_to_idx[cid]] = 1
+        if n_genomes < 2:
+            logger.warning("Less than 2 genomes, skipping tree computation")
+            leaf_order = genome_ids
+            linkage_data = []
+            stats = {"n_genomes": n_genomes, "n_clusters": n_clusters, "n_reference": 0, "max_distance": 0, "min_distance": 0}
+        else:
+            matrix = np.zeros((n_genomes, n_clusters), dtype=np.uint8)
+            for gi, gid in enumerate(genome_ids):
+                for cid in all_clusters_by_genome[gid]:
+                    if cid in cluster_to_idx:
+                        matrix[gi, cluster_to_idx[cid]] = 1
 
-        condensed = pdist(matrix, metric="jaccard")
-        dist_matrix = squareform(condensed)
-        Z = linkage(condensed, method="average")
-        leaf_order = [genome_ids[i] for i in leaves_list(Z)]
-        linkage_data = Z.tolist()
+            condensed = pdist(matrix, metric="jaccard")
+            dist_matrix = squareform(condensed)
+            Z = linkage(condensed, method="average")
+            leaf_order = [genome_ids[i] for i in leaves_list(Z)]
+            linkage_data = Z.tolist()
 
-        stats = {
-            "n_genomes": n_genomes,
-            "n_clusters": n_clusters,
-            "n_reference": n_genomes - 1,
-            "max_distance": round(float(condensed.max()), 4),
-            "min_distance": round(float(condensed.min()), 4),
-        }
+            stats = {
+                "n_genomes": n_genomes,
+                "n_clusters": n_clusters,
+                "n_reference": n_genomes - 1,
+                "max_distance": round(float(condensed.max()), 4),
+                "min_distance": round(float(condensed.min()), 4),
+            }
     except ImportError:
         logger.warning("numpy/scipy not available, skipping tree computation")
         leaf_order = genome_ids
@@ -920,10 +926,12 @@ def extract_tree_data(db_path, user_genome_id):
     metadata = {}
     for gid in genome_ids:
         gdata = genome_table.get(gid, {})
-        raw_tax = gdata.get("gtdb_taxonomy") or gdata.get("ncbi_taxonomy") or "Unknown"
+        ncbi_raw = gdata.get("ncbi_taxonomy") or ""
+        gtdb_raw = gdata.get("gtdb_taxonomy") or ""
         meta = {
-            "taxonomy": raw_tax,
-            "tax": parse_taxonomy(raw_tax),
+            "taxonomy": ncbi_raw or gtdb_raw or "Unknown",
+            "tax": parse_taxonomy(ncbi_raw),
+            "gtdb_tax": parse_taxonomy(gtdb_raw),
             "n_features": gdata.get("size", 0),
             "ani_to_user": ani_data.get(gid) if gid != user_genome_id else 1.0,
         }
